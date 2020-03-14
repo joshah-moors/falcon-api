@@ -1,6 +1,7 @@
 import json
 
 import falcon
+import msgpack
 
 class Resource:
 
@@ -15,6 +16,11 @@ class Resource:
         }
 
         # Create a JSON representation of the resource
-        resp.body = json.dumps(doc, ensure_ascii=False)
+        #resp.body = json.dumps(doc, ensure_ascii=False)
+        #
+        # Give Message Pack a shot
+        resp.data = msgpack.packb(doc, use_bin_type=True)
+        resp.content_type = falcon.MEDIA_MSGPACK
+        #
         # 200 is default
         resp.status = falcon.HTTP_200

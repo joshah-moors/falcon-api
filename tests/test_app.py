@@ -42,11 +42,11 @@ def test_list_images(client):
 # With clever composition of fixtures, we can observe what happens with
 # the mock injected into the image resource.
 def test_post_image(client, mock_store):
-    file_name = 'fake-image-name.xyz'
+    file_name = 'fake-image-name.jpeg'
 
     # We need to know what ImageStore method will be used
     mock_store.save.return_value = file_name
-    image_content_type = 'image/xyz'
+    image_content_type = 'image/jpeg'
 
     response = client.simulate_post(
         '/images',

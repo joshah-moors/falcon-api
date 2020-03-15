@@ -3,13 +3,31 @@
 import io
 import json
 import os
+import re
 import uuid
 import mimetypes
 
 import falcon
 import msgpack
 
-class Resource:
+ALLOWED_IMAGE_TYPES = (
+    'image/gif',
+    'image/jpeg',
+    'image/png',
+)
+
+def validate_image_type(req, resp, resource, params):
+    if req.content_type not in ALLOWED_IMAGE_TYPES:
+        msg = 'Image type not allowed. Must be PNG, JPEG, or GIF'
+        raise falcon.HTTPBadRequest('Bad request', msg)
+
+def extract_project_id(req, resp, resource, params):
+    '''Adds `project_id` to the list of params for all responders.
+    Meant to be used as a `before` hook
+    '''
+    params['project_id'] = req.get_header('X-PROJECT-ID')
+
+class Collection:
 
     # Initialize resource with path used during POST
     def __init__(self, image_store):
@@ -35,16 +53,32 @@ class Resource:
         # 200 is default
         resp.status = falcon.HTTP_200
 
+    # This before hook calls the validation function
+    @falcon.before(validate_image_type)
     def on_post(self, req, resp):
         name = self._image_store.save(req.stream, req.content_type)
         #
         resp.status = falcon.HTTP_201
         resp.location = '/images/' + name
 
+class Item:
+    def __init__(self, image_store):
+        self._image_store = image_store
+
+    def on_get(self, req, resp, name):
+        resp.content_type = mimetypes.guess_type(name)[0]
+        #resp.stream, resp.content_length = self._image_store.open(name)
+        try:
+            resp.stream, resp.content_length = self._image_store.open(name)
+        except IOError:
+            raise falcon.HTTPNotFound()
 
 class ImageStore:
 
     _CHUNK_SIZE_BYTES = 4096
+    _IMAGE_NAME_PATTERN = re.compile(
+        '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z]{2,4}$'
+    )
 
     # Note dependency injection for std library methods
     # This will avoid monkey-patching later
@@ -67,3 +101,17 @@ class ImageStore:
                 image_file.write(chunk)
 
         return name
+
+    def open(self, name):
+        if not self._IMAGE_NAME_PATTERN.match(name):
+            raise IOError('File not found')
+
+        image_path = os.path.join(self._storage_path, name)
+        stream = self._fopen(image_path, 'rb')
+        content_length = os.path.getsize(image_path)
+
+        return stream, content_length
+
+@falcon.before(extract_project_id)
+class Message:
+    pass

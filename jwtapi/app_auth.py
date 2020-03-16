@@ -64,6 +64,7 @@ class Refresh:
         #
         # First decode the expired token and check the user
         # Then hit the db (seperate table) and see if refresh token is valid for that user
+        user = None   # for linting
         #    - update refresh token in DB, and return
         jwt = jwt_auth.get_auth_token({'username': user})
         resp_dict = {

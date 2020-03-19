@@ -53,7 +53,8 @@ class Authenticate:
         resp.body = json.dumps(resp_dict)
         resp.status = falcon.HTTP_200
 
-class Refresh:
+
+class RefreshToken:
     def on_post(self, req, resp):
         # Parse refreshToken out of body
         refresh_token = req.media['refreshToken']
@@ -75,7 +76,8 @@ class Refresh:
         resp.body = json.dumps(resp_dict)
         resp.status = falcon.HTTP_200
 
-class Invalidate:
+
+class InvalidateToken:
     def on_post(self, req, resp):
         #
         # Go to the database, clear the entry for the refresh token

@@ -20,7 +20,7 @@ Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
 
-class Users(Base):
+class User(Base):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
@@ -34,7 +34,7 @@ class Users(Base):
         self.email = email
 
 
-class RefreshTokens(Base):
+class RefreshToken(Base):
     __tablename__ = 'refresh_tokens'
     
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
@@ -60,7 +60,7 @@ def hash_this(secret, salt):
 if __name__ == '__main__':
     # Create the tables
     #Base.metadata.create_all(engine)
-
+    ''' 
     # Insert some records
     session = Session()
 
@@ -94,3 +94,24 @@ if __name__ == '__main__':
     # Commit & close session
     #session.commit()
     #session.close()
+    
+    # To Query
+
+    session = Session()
+
+    #user_results = session.query(Users).all()
+    #
+    #user_result = session.query(Users) \
+    #    .filter(Users.username.ilike('S%'))
+    #
+    #user_result = session.query(Users) \
+    #    .join(RefreshTokens) \
+    #    .filter(Users.username == 'texasLonghorn') \
+    #    .all()
+    #
+    user_result = session.query(RefreshTokens) \
+        .filter(RefreshTokens.create_ts > datetime.date(2020, 3, 20))
+    for user in user_result:
+        #print(dir(user))
+        print(f'Token secrest for user {user.user_id} is: {user.token_secret}')
+    '''

@@ -3,14 +3,14 @@
 Practice to implement JWT authentication/authorization on Falcon API
 
 #Command to start server
-#    waitress-serve --port=8000 --call 'falconapi.app:get_app'
+#    waitress-serve --port=8000 --call 'jwtapi.app:get_app'
 
 '''
 import falcon
 from falcon_auth import FalconAuthMiddleware
 
 from .app_auth import jwt_auth, Authenticate, Refresh, Invalidate
-from .app_functions import PublicInfo, PrivateInfo
+from .app_resources import PublicInfo, PrivateInfo
 
 open_routes = [ '/auth/api/v1/login',
                 '/auth/api/v1/refresh',

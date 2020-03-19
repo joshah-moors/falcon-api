@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker, relationship, backref
 
 SALT = b'\xd6\xea\xc1A\xf3!\xce\xc7\xa6\xec\x93\xec\xcc_{,\x08\x9aWK\xb2R\xc4\x08\xa8\xa1@\xf6\x07\x7fe\xea'
 
-engine = create_engine('sqlite:///db/backend.db')
+engine = create_engine('sqlite:///jwtapi/db/backend.db')
 Session = sessionmaker(bind=engine)
 
 Base = declarative_base()
@@ -40,7 +40,7 @@ class RefreshToken(Base):
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     token_secret = Column(String)
     create_ts = Column(DateTime, default=datetime.datetime.utcnow)
-    user = relationship("Users", backref=backref("refresh_token", uselist=False))
+    user = relationship("User", backref=backref("refresh_token", uselist=False))
 
     def __init__(self, user_id, token_secret, user):
         self.user_id = user_id

@@ -9,6 +9,8 @@ import json
 import falcon
 from falcon_auth import JWTAuthBackend
 
+import jwtapi.app_db as app_db
+
 # This is held in the environment somewhere
 APP_SECRET = 'Yz#SZ4The0AJU^jC'
 
@@ -21,8 +23,8 @@ jwt_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=exp_time)
 class Authenticate:
     def on_post(self, req, resp):
         # Parse user/pass out of the body
-        user = req.media['user']
-        pw = req.media['password']
+        username = req.media['username']
+        password = req.media['password']
         #print(f'RECEIVED: User: {user} -- Pass: {pw}')
         #
         #
@@ -82,5 +84,31 @@ class InvalidateToken:
         #
         # Go to the database, clear the entry for the refresh token
         #
+        resp.status = falcon.HTTP_200
+
+
+class UserMgmt:
+    def on_post(self, req, resp):
+        email = req.media['email']
+        username = req.media['username']
+        password = req.media['password']
+        #
+        session = app_db.Session()
+        #
+        #    ADD VALIDATIONS
+        #         - ensure email doesn't exist in db
+        #         - ensure username isn't taken
+        #
+        #
+        this_user = app_db.User(username, app_db.hash_this(password, app_db.SALT), email)
+        session.add(this_user)
+        #
+        session.commit()
+        session.close()
+        #
+        resp_dict = {
+            'status': 'success',
+        }
+        resp.body = json.dumps(resp_dict)
         resp.status = falcon.HTTP_200
 

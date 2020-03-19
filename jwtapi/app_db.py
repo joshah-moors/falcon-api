@@ -62,7 +62,7 @@ if __name__ == '__main__':
     #Base.metadata.create_all(engine)
 
     # Insert some records
-    #session = Session()
+    session = Session()
 
     # Create objects
     users, user_dict = [

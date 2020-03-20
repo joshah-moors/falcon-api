@@ -97,9 +97,11 @@ class RefreshToken:
                                  issuer=refresh_auth.issuer,
                                  audience=refresh_auth.audience,
                                  leeway=refresh_auth.leeway)
-        except jwt.InvalidTokenError as ex:
-            raise falcon.HTTPUnauthorized(
-                description=str(ex))
+        #except jwt.InvalidTokenError as ex:
+        #    raise falcon.HTTPUnauthorized(
+        #        description=str(ex))
+        except Exception as ex:
+            raise falcon.HTTPUnauthorized(description=str(ex))
         #
         # First decode the expired token and check the user
         # Then hit the db (seperate table) and see if refresh token is valid for that user

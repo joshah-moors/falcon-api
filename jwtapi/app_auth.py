@@ -8,6 +8,7 @@ import json
 
 import falcon
 from falcon_auth import JWTAuthBackend
+from sqlalchemy import or_
 
 import jwtapi.app_db as app_db
 from jwtapi.app_db import User
@@ -26,7 +27,8 @@ class Authenticate:
         # Parse user/pass out of the body
         username = req.media['username']
         password = req.media['password']
-        #print(f'RECEIVED: User: {user} -- Pass: {pw}')
+        #print(f'RECEIVED: User: {username} -- Pass: {password}')
+        #
         #
         #
         #   - Refresh token
@@ -34,27 +36,46 @@ class Authenticate:
         #             30 days
         refresh_age = 30 * 24 * 60 * 60
         #
-        #   ~ VERIFY USER LOGIC GOES HERE ~
-        #
+        #  VERIFY USER LOGIC GOES HERE:
         #  1. SELECT username, pw_hash, salt from db
+        session = app_db.Session()
+        user_result = session.query(User)                                                    \
+                             .filter(or_(User.username == username, User.email == username)) \
+                             .all()
+        if len(user_result) == 0:
+            # No match
+            user_not_found_dict = {'status': 'user not found'}
+            resp.body = json.dumps(user_not_found_dict)
+            resp.status = falcon.HTTP_409
+            return
         #
         #  2. Re-hash the pw provided by the user with salt from db
+        pw_hash = app_db.hash_this(password, app_db.SALT)
         #
         #  3. If newly generated pw hash mathes db:
-        #        - Create JWT
-        #        - DB log refresh token
-        #        - Return JWT & refresh token
-        #     If no match:
-        #        return a 401 unauthorized
-        #
-        jwt = jwt_auth.get_auth_token({'username': username})
-        resp_dict = {
-            'accessToken': jwt,
-            'refreshToken': '',
-            'refreshAge': refresh_age,
-        }
-        resp.body = json.dumps(resp_dict)
-        resp.status = falcon.HTTP_200
+        #        - Create JWT, DB log refresh token, return JWT and refresh token
+        for user in user_result:
+            if pw_hash == user.passhash:
+                jwt = jwt_auth.get_auth_token({'username': user.username})
+                #
+                #
+                #    Create a refresh token secret
+                #    Log refresh secret in the db
+                #    create a refresh token
+                #
+                #
+                #
+                resp_dict = {
+                    'accessToken': jwt,
+                    'refreshToken': '',
+                    'refreshAge': refresh_age,
+                }
+                resp.body = json.dumps(resp_dict)
+                resp.status = falcon.HTTP_200
+                return
+        #  If no match:
+        #    return a 401 unauthorized
+        resp.status = falcon.HTTP_401
 
 
 class RefreshToken:
@@ -112,7 +133,7 @@ class UserMgmt:
             resp.body = json.dumps(email_taken_dict)
             resp.status = falcon.HTTP_409
             return
-        # Good to create use
+        # Good to create user
         this_user = User(username, app_db.hash_this(password, app_db.SALT), email)
         session.add(this_user)
         #

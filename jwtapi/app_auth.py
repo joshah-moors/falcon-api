@@ -5,6 +5,7 @@ The auth flow described here is taken from this article:
 '''
 
 import json
+import uuid
 
 import falcon
 from falcon_auth import JWTAuthBackend
@@ -18,8 +19,10 @@ APP_SECRET = 'Yz#SZ4The0AJU^jC'
 
 # JWT Backend & Middleware
 user_loader = lambda token_content: token_content['user']
-exp_time = 15 * 60    # 15 mins * 60 seconds
-jwt_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=exp_time)
+jwt_exp_time = 15 * 60    # 15 mins * 60 seconds
+jwt_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=jwt_exp_time)
+refresh_exp_time = 30 * 24 * 60 * 60
+refresh_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=refresh_exp_time)
 
 
 class Authenticate:
@@ -27,15 +30,6 @@ class Authenticate:
         # Parse user/pass out of the body
         username = req.media['username']
         password = req.media['password']
-        #print(f'RECEIVED: User: {username} -- Pass: {password}')
-        #
-        #
-        #
-        #   - Refresh token
-        #       (Age should be set by user "keep me logged in" king of thing)
-        #             30 days
-        refresh_age = 30 * 24 * 60 * 60
-        #
         #  VERIFY USER LOGIC GOES HERE:
         #  1. SELECT username, pw_hash, salt from db
         session = app_db.Session()
@@ -59,22 +53,33 @@ class Authenticate:
                 jwt = jwt_auth.get_auth_token({'username': user.username})
                 #
                 #
-                #    Create a refresh token secret
-                #    Log refresh secret in the db
-                #    create a refresh token
+                #    CREATE REFRESH TOKEN SHOULD BE WRAPPED IN INPUT OF
+                #                     "Keep me logged in option"
                 #
                 #
-                #
+                # Create a refresh token secret
+                refresh_secret = str(uuid.uuid4())
+                # Log refresh secret in the db -- delete if exists first
+                session.query(app_db.RefreshToken)                     \
+                       .filter(app_db.RefreshToken.user_id == user.id) \
+                       .delete(synchronize_session=False)
+                session.add(app_db.RefreshToken(user.username, refresh_secret, user))
+                session.commit()
+                # Create a refresh token
+                refresh_token = refresh_auth.get_auth_token({
+                        'username': user.username,
+                        'refresh': refresh_secret
+                    })
+                # Return everything in the response
                 resp_dict = {
                     'accessToken': jwt,
-                    'refreshToken': '',
-                    'refreshAge': refresh_age,
+                    'refreshToken': refresh_token,
+                    'refreshAge': refresh_exp_time,
                 }
                 resp.body = json.dumps(resp_dict)
                 resp.status = falcon.HTTP_200
                 return
-        #  If no match:
-        #    return a 401 unauthorized
+        # If no match: return a 401 unauthorized
         resp.status = falcon.HTTP_401
 
 
@@ -82,10 +87,18 @@ class RefreshToken:
     def on_post(self, req, resp):
         # Parse refreshToken out of body
         refresh_token = req.media['refreshToken']
-        #
-        # This part will need 2 pieces of data:
-        #    - the expired token
-        #    - the refresh token
+        # Verify refresh token sent in body
+        try:
+            payload = jwt.decode(jwt=refresh_token, 
+                                 key=refresh_auth.secret_key,
+                                 options=refresh_auth.options,
+                                 algorithms=[refresh_auth.algorithm],
+                                 issuer=refresh_auth.issuer,
+                                 audience=refresh_auth.audience,
+                                 leeway=refresh_auth.leeway)
+        except jwt.InvalidTokenError as ex:
+            raise falcon.HTTPUnauthorized(
+                description=str(ex))
         #
         # First decode the expired token and check the user
         # Then hit the db (seperate table) and see if refresh token is valid for that user

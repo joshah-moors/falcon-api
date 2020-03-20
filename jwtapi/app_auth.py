@@ -8,7 +8,7 @@ import json
 import uuid
 
 import falcon
-import jwt
+import jwt as jwt_lib
 from falcon_auth import JWTAuthBackend
 from sqlalchemy import or_
 
@@ -90,18 +90,17 @@ class RefreshToken:
         refresh_token = req.media['refreshToken']
         # Verify refresh token sent in body
         try:
-            payload = jwt.decode(jwt=refresh_token, 
+            payload = jwt_lib.decode(jwt=refresh_token, 
                                  key=refresh_auth.secret_key,
                                  options=refresh_auth.options,
                                  algorithms=[refresh_auth.algorithm],
                                  issuer=refresh_auth.issuer,
                                  audience=refresh_auth.audience,
                                  leeway=refresh_auth.leeway)
-        #except jwt.InvalidTokenError as ex:
-        #    raise falcon.HTTPUnauthorized(
-        #        description=str(ex))
-        except Exception as ex:
+        except jwt_lib.InvalidTokenError as ex:
             raise falcon.HTTPUnauthorized(description=str(ex))
+        #except Exception as ex:
+        #    raise falcon.HTTPUnauthorized(description=str(ex))
         #
         # First decode the expired token and check the user
         # Then hit the db (seperate table) and see if refresh token is valid for that user

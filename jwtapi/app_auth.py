@@ -10,6 +10,7 @@ import falcon
 from falcon_auth import JWTAuthBackend
 
 import jwtapi.app_db as app_db
+from jwtapi.app_db import User
 
 # This is held in the environment somewhere
 APP_SECRET = 'Yz#SZ4The0AJU^jC'
@@ -92,15 +93,27 @@ class UserMgmt:
         email = req.media['email']
         username = req.media['username']
         password = req.media['password']
-        #
         session = app_db.Session()
-        #
-        #    ADD VALIDATIONS
-        #         - ensure email doesn't exist in db
-        #         - ensure username isn't taken
-        #
-        #
-        this_user = app_db.User(username, app_db.hash_this(password, app_db.SALT), email)
+        # Ensure username doesn't exist in db
+        user_result = session.query(User)                       \
+                             .filter(User.username == username) \
+                             .all()
+        if len(user_result) > 0:
+            user_taken_dict = {'status': 'username taken'}
+            resp.body = json.dumps(user_taken_dict)
+            resp.status = falcon.HTTP_409
+            return
+        # Ensure email doesn't exist in db
+        email_result = session.query(User)                 \
+                              .filter(User.email == email) \
+                              .all()
+        if len(email_result) > 0:
+            email_taken_dict = {'status': 'email taken'}
+            resp.body = json.dumps(email_taken_dict)
+            resp.status = falcon.HTTP_409
+            return
+        # Good to create use
+        this_user = User(username, app_db.hash_this(password, app_db.SALT), email)
         session.add(this_user)
         #
         session.commit()
@@ -111,4 +124,3 @@ class UserMgmt:
         }
         resp.body = json.dumps(resp_dict)
         resp.status = falcon.HTTP_200
-

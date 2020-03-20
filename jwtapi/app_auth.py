@@ -8,6 +8,7 @@ import json
 import uuid
 
 import falcon
+import jwt
 from falcon_auth import JWTAuthBackend
 from sqlalchemy import or_
 

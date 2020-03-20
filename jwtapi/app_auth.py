@@ -47,7 +47,7 @@ class Authenticate:
         #     If no match:
         #        return a 401 unauthorized
         #
-        jwt = jwt_auth.get_auth_token({'username': user})
+        jwt = jwt_auth.get_auth_token({'username': username})
         resp_dict = {
             'accessToken': jwt,
             'refreshToken': '',

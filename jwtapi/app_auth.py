@@ -85,15 +85,11 @@ class Login:
 
 
 class RefreshToken:
-    claim_opts = {
-        'verify_signature': True, 
-        'verify_exp': True, 
-        'verify_nbf': True, 
-        'verify_iat': True, 
-        'require_exp': True, 
-        'require_iat': True, 
-        'require_nbf': True,
-    }
+    def __init__(self):
+        self.claim_opts = dict(('verify_' + claim, True) for claim in refresh_auth.verify_claims)
+        self.claim_opts.update(
+            dict(('require_' + claim, True) for claim in refresh_auth.required_claims)
+        )
 
     def on_post(self, req, resp):
         refresh_token = req.media['refreshToken']
@@ -109,25 +105,54 @@ class RefreshToken:
         except jwt_lib.InvalidTokenError as ex:
             raise falcon.HTTPUnauthorized(description=str(ex))
         print(payload)
-        #
+        
         # Verify refresh secret in the token against the db
+        this_user = payload['user']['username']
+        this_refresh_secret = payload['user']['refresh']
+        
+        session = app_db.Session()
+        user_result = session.query(User).join(app_db.RefreshToken)  \
+                          .filter(User.username == this_user)        \
+                          .all()
+        # Ensure user was found
+        if len(user_result) == 0:
+            user_not_found_dict = {'status': 'user not found'}
+            resp.body = json.dumps(user_not_found_dict)
+            resp.status = falcon.HTTP_409
+            return
+        # Check the token secret
+        if this_refresh_secret != user_result[0].refresh_token.token_secret:
+            resp.status = falcon.HTTP_401
+            return
+        user_id = user_result[0].id
+        session.close()
 
-
+        # Close old session and open a new one
+        session = app_db.Session()
+        user_result = session.query(User)              \
+                          .filter(User.id == user_id)  \
+                          .all()
+        # Create a refresh token secret
+        refresh_secret = str(uuid.uuid4())
+        print(f'THIS USER ID IS: {user_result[0].id}')
+        # Log refresh secret in the db -- delete if exists first
+        session.query(app_db.RefreshToken)                               \
+               .filter(app_db.RefreshToken.user_id == user_result[0].id) \
+               .delete()
+               #.delete(synchronize_session=False)
+        session.add(app_db.RefreshToken(user_result[0].id, refresh_secret, user_result[0]))
+        session.commit()
+        # Create a refresh token
+        refresh_token = refresh_auth.get_auth_token({
+                'username': this_user,
+                'refresh': refresh_secret
+            })
         #
-        #
-        #
-        #
-        #
-        #
-        #
-        print('I made it here')
-        user = None   # for linting
-        #    - update refresh token in DB, and return
-        jwt = jwt_auth.get_auth_token({'username': user})
+        jwt = jwt_auth.get_auth_token({'username': this_user})
         resp_dict = {
             'accessToken': jwt,
-            'refreshToken': '',
-            'refreshAge': '',
+            'refreshToken': refresh_token,
+            'refreshAge': refresh_exp_time,
         }
         resp.body = json.dumps(resp_dict)
         resp.status = falcon.HTTP_200

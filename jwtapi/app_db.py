@@ -15,6 +15,7 @@ from sqlalchemy.orm import sessionmaker, relationship, backref
 SALT = b'\xd6\xea\xc1A\xf3!\xce\xc7\xa6\xec\x93\xec\xcc_{,\x08\x9aWK\xb2R\xc4\x08\xa8\xa1@\xf6\x07\x7fe\xea'
 
 engine = create_engine('sqlite:///jwtapi/db/backend.db')
+#engine = create_engine('sqlite:///db/backend.db')
 Session = sessionmaker(bind=engine)
 
 Base = declarative_base()
@@ -114,4 +115,14 @@ if __name__ == '__main__':
     for user in user_result:
         #print(dir(user))
         print(f'Token secrest for user {user.user_id} is: {user.token_secret}')
+    
+    # Join tables
+    session = Session()
+    user_results = session.query(User).join(RefreshToken)  \
+                          .filter(User.username == 'texasLonghorn') \
+                          .all()
+    print(user_results)
+    print(dir(user_results[0]))
+    for user in user_results:
+        print(user.username, user.refresh_token.token_secret)
     '''

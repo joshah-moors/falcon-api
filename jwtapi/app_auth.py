@@ -15,18 +15,18 @@ from sqlalchemy import or_
 import jwtapi.app_db as app_db
 from jwtapi.app_db import User
 
-# This is held in the environment somewhere
+# In production - this is held in the environment
 APP_SECRET = 'Yz#SZ4The0AJU^jC'
 
-# JWT Backend & Middleware
+# JWT Backends
 user_loader = lambda token_content: token_content['user']
 jwt_exp_time = 15 * 60    # 15 mins * 60 seconds
 jwt_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=jwt_exp_time)
-refresh_exp_time = 30 * 24 * 60 * 60
+refresh_exp_time = 7 * 24 * 60 * 60   # 7 days
 refresh_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=refresh_exp_time)
 
 
-class Authenticate:
+class Login:
     def on_post(self, req, resp):
         # Parse user/pass out of the body
         username = req.media['username']
@@ -85,25 +85,42 @@ class Authenticate:
 
 
 class RefreshToken:
+    claim_opts = {
+        'verify_signature': True, 
+        'verify_exp': True, 
+        'verify_nbf': True, 
+        'verify_iat': True, 
+        'require_exp': True, 
+        'require_iat': True, 
+        'require_nbf': True,
+    }
+
     def on_post(self, req, resp):
-        # Parse refreshToken out of body
         refresh_token = req.media['refreshToken']
         # Verify refresh token sent in body
         try:
             payload = jwt_lib.decode(jwt=refresh_token, 
-                                 key=refresh_auth.secret_key,
-                                 options=refresh_auth.options,
-                                 algorithms=[refresh_auth.algorithm],
-                                 issuer=refresh_auth.issuer,
-                                 audience=refresh_auth.audience,
-                                 leeway=refresh_auth.leeway)
+                                     key=refresh_auth.secret_key,
+                                     options=self.claim_opts,
+                                     algorithms=[refresh_auth.algorithm],
+                                     issuer=refresh_auth.issuer,
+                                     audience=refresh_auth.audience,
+                                     leeway=refresh_auth.leeway)
         except jwt_lib.InvalidTokenError as ex:
             raise falcon.HTTPUnauthorized(description=str(ex))
-        #except Exception as ex:
-        #    raise falcon.HTTPUnauthorized(description=str(ex))
+        print(payload)
         #
-        # First decode the expired token and check the user
-        # Then hit the db (seperate table) and see if refresh token is valid for that user
+        # Verify refresh secret in the token against the db
+
+
+        #
+        #
+        #
+        #
+        #
+        #
+        #
+        print('I made it here')
         user = None   # for linting
         #    - update refresh token in DB, and return
         jwt = jwt_auth.get_auth_token({'username': user})

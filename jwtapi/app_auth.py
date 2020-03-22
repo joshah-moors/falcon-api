@@ -171,34 +171,12 @@ class UserMgmt:
         email = req.media['email']
         username = req.media['username']
         password = req.media['password']
-        session = app_db.Session()
-        # Ensure username doesn't exist in db
-        user_result = session.query(User)                       \
-                             .filter(User.username == username) \
-                             .all()
-        if len(user_result) > 0:
-            user_taken_dict = {'status': 'username taken'}
-            resp.body = json.dumps(user_taken_dict)
+        #
+        new_user = User(username, app_db.hash_this(password, app_db.SALT), email)
+        crt_status, crt_msg = new_user.create()
+        if crt_status == False:
+            resp.body = json.dumps({'status': crt_msg})
             resp.status = falcon.HTTP_409
             return
-        # Ensure email doesn't exist in db
-        email_result = session.query(User)                 \
-                              .filter(User.email == email) \
-                              .all()
-        if len(email_result) > 0:
-            email_taken_dict = {'status': 'email taken'}
-            resp.body = json.dumps(email_taken_dict)
-            resp.status = falcon.HTTP_409
-            return
-        # Good to create user
-        this_user = User(username, app_db.hash_this(password, app_db.SALT), email)
-        session.add(this_user)
-        #
-        session.commit()
-        session.close()
-        #
-        resp_dict = {
-            'status': 'success',
-        }
-        resp.body = json.dumps(resp_dict)
+        resp.body = json.dumps({'status': 'success'})
         resp.status = falcon.HTTP_200

@@ -8,7 +8,7 @@ import hashlib
 import os
 import uuid
 
-from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, DateTime
+from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
@@ -33,6 +33,26 @@ class User(Base):
         self.username = username
         self.passhash = passhash
         self.email = email
+
+    def create(self) -> (bool, str):
+        session = Session()
+        # Ensure username doesn't exist in db
+        user_res = session.query(User)                                                    \
+                          .filter(func.upper(User.username) == func.upper(self.username)) \
+                          .all()
+        if len(user_res) > 0:
+            return False, 'username taken'
+        # Ensure email doesn't exist in db
+        email_res = session.query(User)                                              \
+                           .filter(func.upper(User.email) == func.upper(self.email)) \
+                           .all()
+        if len(email_res) > 0:
+            return False, 'email taken'
+        # Good to create user
+        session.add(self)
+        session.commit()
+        session.close()
+        return True, 'success'
 
 
 class RefreshToken(Base):
@@ -126,3 +146,4 @@ if __name__ == '__main__':
     for user in user_results:
         print(user.username, user.refresh_token.token_secret)
     '''
+    pass

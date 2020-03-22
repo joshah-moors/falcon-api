@@ -31,27 +31,27 @@ class Login:
         # Parse user/pass out of the body
         username = req.media['username']
         password = req.media['password']
-        #  VERIFY USER LOGIC GOES HERE:
-        #  1. SELECT username, pw_hash, salt from db
+        # 
+        # Ensure user exists
         session = app_db.Session()
         user_result = session.query(User)                                                    \
                              .filter(or_(User.username == username, User.email == username)) \
                              .all()
         if len(user_result) == 0:
-            # No match
-            user_not_found_dict = {'status': 'user not found'}
-            resp.body = json.dumps(user_not_found_dict)
+            resp.body = json.dumps({'status': 'user not found'})
             resp.status = falcon.HTTP_409
             return
-        #
-        #  2. Re-hash the pw provided by the user with salt from db
+        # Hash the user-provided password
         pw_hash = app_db.hash_this(password, app_db.SALT)
         #
-        #  3. If newly generated pw hash mathes db:
+        # If newly generated pw hash mathes db:
         #        - Create JWT, DB log refresh token, return JWT and refresh token
         for user in user_result:
             if pw_hash == user.passhash:
-                jwt = jwt_auth.get_auth_token({'username': user.username})
+                jwt = jwt_auth.get_auth_token({
+                    'username': user.username,
+                    'id': user.id
+                    })
                 #
                 #
                 #    CREATE REFRESH TOKEN SHOULD BE WRAPPED IN INPUT OF
@@ -69,6 +69,7 @@ class Login:
                 # Create a refresh token
                 refresh_token = refresh_auth.get_auth_token({
                         'username': user.username,
+                        'id': user.id,
                         'refresh': refresh_secret
                     })
                 # Return everything in the response
@@ -104,7 +105,7 @@ class RefreshToken:
                                      leeway=refresh_auth.leeway)
         except jwt_lib.InvalidTokenError as ex:
             raise falcon.HTTPUnauthorized(description=str(ex))
-        print(payload)
+        #print(payload)
         
         # Verify refresh secret in the token against the db
         this_user = payload['user']['username']
@@ -134,7 +135,6 @@ class RefreshToken:
                           .all()
         # Create a refresh token secret
         refresh_secret = str(uuid.uuid4())
-        print(f'THIS USER ID IS: {user_result[0].id}')
         # Log refresh secret in the db -- delete if exists first
         session.query(app_db.RefreshToken)                               \
                .filter(app_db.RefreshToken.user_id == user_result[0].id) \
@@ -145,10 +145,14 @@ class RefreshToken:
         # Create a refresh token
         refresh_token = refresh_auth.get_auth_token({
                 'username': this_user,
+                'id': user_id,
                 'refresh': refresh_secret
             })
         #
-        jwt = jwt_auth.get_auth_token({'username': this_user})
+        jwt = jwt_auth.get_auth_token({
+            'username': this_user,
+            'id': user_id
+            })
         resp_dict = {
             'accessToken': jwt,
             'refreshToken': refresh_token,
@@ -160,9 +164,11 @@ class RefreshToken:
 
 class InvalidateToken:
     def on_post(self, req, resp):
-        #
-        # Go to the database, clear the entry for the refresh token
-        #
+        user_id = req.context['user']['id']
+        session = app_db.Session()
+        session.query(app_db.RefreshToken)                     \
+               .filter(app_db.RefreshToken.user_id == user_id) \
+               .delete()
         resp.status = falcon.HTTP_200
 
 

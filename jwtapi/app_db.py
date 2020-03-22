@@ -8,7 +8,7 @@ import hashlib
 import os
 import uuid
 
-from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, DateTime, func
+from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, DateTime, func, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 

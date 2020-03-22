@@ -28,22 +28,22 @@ refresh_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=refresh_
 
 class Login:
     def on_post(self, req, resp):
-        # Parse user/pass out of the body
         username = req.media['username']
         password = req.media['password']
-        # 
+        dbs = req.context['db_session']
+        
         # Ensure user exists
-        session = app_db.Session()
-        user_result = session.query(User)                                                    \
-                             .filter(or_(User.username == username, User.email == username)) \
-                             .all()
+        user_result = dbs.query(User)                                                    \
+                         .filter(or_(User.username == username, User.email == username)) \
+                         .all()
         if len(user_result) == 0:
             resp.body = json.dumps({'status': 'user not found'})
             resp.status = falcon.HTTP_409
             return
+
         # Hash the user-provided password
         pw_hash = app_db.hash_this(password, app_db.SALT)
-        #
+        
         # If newly generated pw hash mathes db:
         #        - Create JWT, DB log refresh token, return JWT and refresh token
         for user in user_result:
@@ -61,18 +61,19 @@ class Login:
                 # Create a refresh token secret
                 refresh_secret = str(uuid.uuid4())
                 # Log refresh secret in the db -- delete if exists first
-                session.query(app_db.RefreshToken)                     \
-                       .filter(app_db.RefreshToken.user_id == user.id) \
-                       .delete(synchronize_session=False)
-                session.add(app_db.RefreshToken(user.username, refresh_secret, user))
-                session.commit()
+                dbs.query(app_db.RefreshToken)                     \
+                   .filter(app_db.RefreshToken.user_id == user.id) \
+                   .delete(synchronize_session=False)
+                dbs.add(app_db.RefreshToken(user.username, refresh_secret, user))
+                dbs.commit()
                 # Create a refresh token
                 refresh_token = refresh_auth.get_auth_token({
                         'username': user.username,
                         'id': user.id,
                         'refresh': refresh_secret
                     })
-                # Return everything in the response
+
+                # Assemble response
                 resp_dict = {
                     'accessToken': jwt,
                     'refreshToken': refresh_token,
@@ -94,7 +95,7 @@ class RefreshToken:
 
     def on_post(self, req, resp):
         refresh_token = req.media['refreshToken']
-        # Verify refresh token sent in body
+        # Verify refresh token
         try:
             payload = jwt_lib.decode(jwt=refresh_token, 
                                      key=refresh_auth.secret_key,
@@ -107,17 +108,16 @@ class RefreshToken:
             raise falcon.HTTPUnauthorized(description=str(ex))
         #print(payload)
         
-        # Verify refresh secret in the token against the db
         this_user = payload['user']['username']
         this_refresh_secret = payload['user']['refresh']
         
-        session = app_db.Session()
-        user_result = session.query(User).join(app_db.RefreshToken)  \
-                          .filter(User.username == this_user)        \
-                          .all()
+        dbs = req.context['db_session']
+        user_result = dbs.query(User).join(app_db.RefreshToken)     \
+                         .filter(User.username == this_user)        \
+                         .all()
         # Ensure user was found
         if len(user_result) == 0:
-            user_not_found_dict = {'status': 'user not found'}
+            user_not_found_dict = {'status': 'user/token not found'}
             resp.body = json.dumps(user_not_found_dict)
             resp.status = falcon.HTTP_409
             return
@@ -126,33 +126,32 @@ class RefreshToken:
             resp.status = falcon.HTTP_401
             return
         user_id = user_result[0].id
-        session.close()
+        dbs.commit()
 
-        # Close old session and open a new one
-        session = app_db.Session()
-        user_result = session.query(User)              \
-                          .filter(User.id == user_id)  \
-                          .all()
+        user_result = dbs.query(User)                 \
+                         .filter(User.id == user_id)  \
+                         .all()
         # Create a refresh token secret
         refresh_secret = str(uuid.uuid4())
-        # Log refresh secret in the db -- delete if exists first
-        session.query(app_db.RefreshToken)                               \
-               .filter(app_db.RefreshToken.user_id == user_result[0].id) \
-               .delete()
-               #.delete(synchronize_session=False)
-        session.add(app_db.RefreshToken(user_result[0].id, refresh_secret, user_result[0]))
-        session.commit()
-        # Create a refresh token
+        # Log refresh secret in the db -- delete if exists
+        dbs.query(app_db.RefreshToken)                               \
+           .filter(app_db.RefreshToken.user_id == user_result[0].id) \
+           .delete()
+        dbs.add(app_db.RefreshToken(user_result[0].id, refresh_secret, user_result[0]))
+        dbs.commit()
+
+        # Create tokens
+        jwt = jwt_auth.get_auth_token({
+            'username': this_user,
+            'id': user_id
+            })
+
         refresh_token = refresh_auth.get_auth_token({
                 'username': this_user,
                 'id': user_id,
                 'refresh': refresh_secret
             })
-        #
-        jwt = jwt_auth.get_auth_token({
-            'username': this_user,
-            'id': user_id
-            })
+        
         resp_dict = {
             'accessToken': jwt,
             'refreshToken': refresh_token,
@@ -165,10 +164,10 @@ class RefreshToken:
 class InvalidateToken:
     def on_post(self, req, resp):
         user_id = req.context['user']['id']
-        session = app_db.Session()
-        session.query(app_db.RefreshToken)                     \
+        req.context['db_session'].query(app_db.RefreshToken)   \
                .filter(app_db.RefreshToken.user_id == user_id) \
                .delete()
+        req.context['db_session'].commit()
         resp.status = falcon.HTTP_200
 
 

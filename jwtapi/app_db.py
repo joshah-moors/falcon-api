@@ -154,15 +154,23 @@ if __name__ == '__main__':
     for user in user_result:
         #print(dir(user))
         print(f'Token secrest for user {user.user_id} is: {user.token_secret}')
-    
+    '''
     # Join tables
     session = Session()
-    user_results = session.query(User).join(RefreshToken)  \
-                          .filter(User.username == 'texasLonghorn') \
-                          .all()
-    print(user_results)
-    print(dir(user_results[0]))
-    for user in user_results:
-        print(user.username, user.refresh_token.token_secret)
-    '''
-    pass
+    #user_results = session.query(User).join(RefreshToken)  \
+    #                      .filter(User.username == 'texasLonghorn') \
+    #                      .all()
+    #print(user_results)
+    #print(dir(user_results[0]))
+    #for user in user_results:
+    #    print(user.username, user.refresh_token.token_secret)
+
+    this_user = 'neoguri'
+    res = session.query(User) \
+                 .filter(User.username == 'neoguri') \
+                 .all()
+    #res = session.query(User).join(RefreshToken)  \
+    #               .filter(User.username == this_user)        \
+    #               .all()
+    print(res[0].id)
+    

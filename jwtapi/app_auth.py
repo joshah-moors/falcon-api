@@ -28,11 +28,10 @@ refresh_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=refresh_
 
 class Login:
     def on_post(self, req, resp):
-        # Parse user/pass out of the body
         username = req.media['username']
         password = req.media['password']
         dbs = req.context['db_session']
-        # 
+        
         # Ensure user exists
         user_result = dbs.query(User)                                                    \
                          .filter(or_(User.username == username, User.email == username)) \
@@ -41,9 +40,10 @@ class Login:
             resp.body = json.dumps({'status': 'user not found'})
             resp.status = falcon.HTTP_409
             return
+
         # Hash the user-provided password
         pw_hash = app_db.hash_this(password, app_db.SALT)
-        #
+        
         # If newly generated pw hash mathes db:
         #        - Create JWT, DB log refresh token, return JWT and refresh token
         for user in user_result:
@@ -72,7 +72,8 @@ class Login:
                         'id': user.id,
                         'refresh': refresh_secret
                     })
-                # Return everything in the response
+
+                # Assemble response
                 resp_dict = {
                     'accessToken': jwt,
                     'refreshToken': refresh_token,
@@ -111,19 +112,12 @@ class RefreshToken:
         this_refresh_secret = payload['user']['refresh']
         
         dbs = req.context['db_session']
-        #
-        #
-        #     REWORK THIS QUERY
-        #       JOIN BREAKS if invalidate endpoint already used
-        #       AND user id is no longer in the Refresh Token table
-        #
-        #
         user_result = dbs.query(User).join(app_db.RefreshToken)     \
                          .filter(User.username == this_user)        \
                          .all()
         # Ensure user was found
         if len(user_result) == 0:
-            user_not_found_dict = {'status': 'user not found'}
+            user_not_found_dict = {'status': 'user/token not found'}
             resp.body = json.dumps(user_not_found_dict)
             resp.status = falcon.HTTP_409
             return
@@ -139,23 +133,25 @@ class RefreshToken:
                          .all()
         # Create a refresh token secret
         refresh_secret = str(uuid.uuid4())
-        # Log refresh secret in the db -- delete if exists first
+        # Log refresh secret in the db -- delete if exists
         dbs.query(app_db.RefreshToken)                               \
            .filter(app_db.RefreshToken.user_id == user_result[0].id) \
            .delete()
         dbs.add(app_db.RefreshToken(user_result[0].id, refresh_secret, user_result[0]))
         dbs.commit()
-        # Create a refresh token
+
+        # Create tokens
+        jwt = jwt_auth.get_auth_token({
+            'username': this_user,
+            'id': user_id
+            })
+
         refresh_token = refresh_auth.get_auth_token({
                 'username': this_user,
                 'id': user_id,
                 'refresh': refresh_secret
             })
-        #
-        jwt = jwt_auth.get_auth_token({
-            'username': this_user,
-            'id': user_id
-            })
+        
         resp_dict = {
             'accessToken': jwt,
             'refreshToken': refresh_token,

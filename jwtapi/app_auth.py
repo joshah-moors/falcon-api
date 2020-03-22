@@ -165,10 +165,10 @@ class RefreshToken:
 class InvalidateToken:
     def on_post(self, req, resp):
         user_id = req.context['user']['id']
-        session = app_db.Session()
-        session.query(app_db.RefreshToken)                     \
+        req.context['db_session'].query(app_db.RefreshToken)   \
                .filter(app_db.RefreshToken.user_id == user_id) \
                .delete()
+        req.context['db_session'].commit()
         resp.status = falcon.HTTP_200
 
 

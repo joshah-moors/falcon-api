@@ -11,6 +11,7 @@ from falcon_auth import FalconAuthMiddleware
 
 import jwtapi.app_auth as app_auth
 import jwtapi.app_resources as app_resources
+from jwtapi.app_db import Session, SQLAlchemySessionManager
 
 
 open_routes = [ '/auth/api/v1/login',
@@ -19,9 +20,10 @@ open_routes = [ '/auth/api/v1/login',
                 '/media/api/v1/public', ]
 
 auth_middleware = FalconAuthMiddleware(app_auth.jwt_auth, exempt_routes=open_routes)
+db_middleware = SQLAlchemySessionManager(Session)
 
 def create_app():
-    api = falcon.API(middleware=[auth_middleware])
+    api = falcon.API(middleware=[auth_middleware, db_middleware])
     api.add_route('/auth/api/v1/login', app_auth.Login())
     api.add_route('/auth/api/v1/refresh', app_auth.RefreshToken())
     api.add_route('/auth/api/v1/invalidate', app_auth.InvalidateToken())

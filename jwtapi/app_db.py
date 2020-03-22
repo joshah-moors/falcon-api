@@ -69,6 +69,25 @@ class RefreshToken(Base):
         self.user = user
 
 
+class SQLAlchemySessionManager:
+    """
+    Create a session for every request and close it when the request ends.
+    """
+    def __init__(self, Session):
+        self.db_session = Session
+    def process_resource(self, req, resp, resource, params):
+        if req.method == 'OPTIONS':
+            return
+        req.context['db_session'] = self.db_session()
+    def process_response(self, req, resp, resource, req_succeeded):
+        if req.method == 'OPTIONS':
+            return
+        if req.context.get('db_session'):
+            if not req_succeeded:
+                req.context['db_session'].rollback()
+            req.context['db_session'].close()
+
+
 def hash_this(secret, salt):
     return hashlib.pbkdf2_hmac(
         'sha256',   # hash digest algorithm

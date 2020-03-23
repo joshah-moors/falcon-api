@@ -1,8 +1,4 @@
 #! /usr/bin/env python3
-'''
-The auth flow described here is taken from this article:
-    https://levelup.gitconnected.com/secure-jwts-with-backend-for-frontend-9b7611ad2afb
-'''
 
 import json
 import uuid
@@ -15,8 +11,8 @@ from sqlalchemy import or_
 import jwtapi.app_db as app_db
 from jwtapi.app_db import User
 
-# In production - this is held in the environment
-APP_SECRET = 'Yz#SZ4The0AJU^jC'
+# In production - this is held in the environment or seperate setting file
+APP_SECRET = '__some_app_secret__'
 
 # JWT Backends
 user_loader = lambda token_content: token_content['user']

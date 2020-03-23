@@ -1,8 +1,9 @@
 #! /usr/bin/env python3
 '''
-Starting with:
+My first time using SQLAlchemy, starting with:
     https://auth0.com/blog/sqlalchemy-orm-tutorial-for-python-developers/
 '''
+
 import datetime
 import hashlib
 import os
@@ -100,7 +101,7 @@ def hash_this(secret, salt):
 if __name__ == '__main__':
     # Create the tables
     #Base.metadata.create_all(engine)
-    ''' 
+    '''
     # Insert some records
     session = Session()
 
@@ -111,7 +112,7 @@ if __name__ == '__main__':
         ('whereareyoufish', hash_this('some*passw0rd', SALT), 'whereisthatfish@gmail.com'),
     ], {}
     for user in users:
-        user_dict[user[0]] = Users(*user)
+        user_dict[user[0]] = User(*user)
 
     refresh_tokens, token_dict = [
         ('texasLonghorn', str(uuid.uuid4()), user_dict['texasLonghorn']),
@@ -119,7 +120,7 @@ if __name__ == '__main__':
         ('whereareyoufish', str(uuid.uuid4()), user_dict['whereareyoufish']),
     ], {}
     for token in refresh_tokens:
-        token_dict[token[0]] = RefreshTokens(*token)
+        token_dict[token[0]] = RefreshToken(*token)
     
     # Insert the records
 
@@ -132,29 +133,28 @@ if __name__ == '__main__':
         session.add(token)
 
     # Commit & close session
-    #session.commit()
-    #session.close()
-    
+    session.commit()
+    session.close()
+
     # To Query
 
     session = Session()
 
-    #user_results = session.query(Users).all()
+    #user_results = session.query(User).all()
     #
-    #user_result = session.query(Users) \
-    #    .filter(Users.username.ilike('S%'))
+    #user_result = session.query(User) \
+    #    .filter(User.username.ilike('S%'))
     #
-    #user_result = session.query(Users) \
-    #    .join(RefreshTokens) \
-    #    .filter(Users.username == 'texasLonghorn') \
+    #user_result = session.query(User) \
+    #    .join(RefreshToken) \
+    #    .filter(User.username == 'texasLonghorn') \
     #    .all()
     #
-    user_result = session.query(RefreshTokens) \
-        .filter(RefreshTokens.create_ts > datetime.date(2020, 3, 20))
+    user_result = session.query(RefreshToken) \
+        .filter(RefreshToken.create_ts > datetime.date(2020, 3, 20))
     for user in user_result:
         #print(dir(user))
         print(f'Token secrest for user {user.user_id} is: {user.token_secret}')
-    '''
     # Join tables
     session = Session()
     #user_results = session.query(User).join(RefreshToken)  \
@@ -173,4 +173,5 @@ if __name__ == '__main__':
     #               .filter(User.username == this_user)        \
     #               .all()
     print(res[0].id)
-    
+    '''
+    pass

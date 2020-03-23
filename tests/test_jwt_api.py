@@ -57,3 +57,11 @@ def test_new_user_fail(client, monkeypatch):
     response = client.simulate_post('/auth/api/v1/user-mgmt', body=body)
     assert response.status == falcon.HTTP_409
     assert response.json['status'] == fail_status
+
+#def test_login(client, monkeypatch):
+#    ''' Test the login endpoint - pass condition '''
+#    monkeypatch.setattr('req.context["db_session"].query', lambda obj: ['test'])
+#
+#    body = json.dumps(test_user_dict)
+#    response = client.simulate_post('/auth/api/v1/login', body=body)
+#    assert response.status == falcon.HTTP_OK

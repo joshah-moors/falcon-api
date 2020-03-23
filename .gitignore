@@ -2,6 +2,3 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Specific for this image service
-*.png

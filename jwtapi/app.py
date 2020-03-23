@@ -1,11 +1,11 @@
 #! /usr/bin/env python3
 '''
-Practice to implement JWT authentication/authorization on Falcon API
+Falcon API implementing JWT auth
 
-#Command to start server
-#    waitress-serve --port=8000 --call 'jwtapi.app:get_app'
-
+Command to start server (from repo root dir)
+    waitress-serve --port=8000 --call 'jwtapi.app:get_app'
 '''
+
 import falcon
 from falcon_auth import FalconAuthMiddleware
 

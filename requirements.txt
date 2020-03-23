@@ -1,4 +1,5 @@
-falcon
-falcon-auth
-waitress
-msgpack-python
+falcon>=2.0.0
+falcon-auth>=1.1.0
+msgpack-python=0.5.*
+SQLAlchemy==1.3.*
+waitress>=1.4.0

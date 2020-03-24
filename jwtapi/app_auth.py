@@ -24,6 +24,16 @@ refresh_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=refresh_
 
 class Login:
     def on_post(self, req, resp):
+        if req.media is None:
+            resp.body = json.dumps({'status': 'missing username/password'})
+            resp.status = falcon.HTTP_409
+            return
+
+        if any(('username' not in req.media, 'password' not in req.media)):
+            resp.body = json.dumps({'status': 'missing username/password'})
+            resp.status = falcon.HTTP_409
+            return
+            
         username = req.media['username']
         password = req.media['password']
         dbs = req.context['db_session']

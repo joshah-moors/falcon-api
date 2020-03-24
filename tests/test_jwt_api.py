@@ -8,6 +8,7 @@ from falcon import testing
 from unittest import mock
 
 import jwtapi.app
+import jwtapi.app_db
 
 test_user_dict = {
     'email': 'mr.fake@gmail.com',
@@ -31,6 +32,13 @@ def test_public_route(client):
 def test_private_route_no_auth(client):
     ''' Test the protected route '''
     response = client.simulate_get('/media/api/v1/private')
+    assert response.status == falcon.HTTP_401
+    assert response.json['title']  == '401 Unauthorized'
+    assert response.json['description'] == 'Missing Authorization Header'
+
+def test_invalidate_route_no_auth(client):
+    ''' Test invalidate route - fail condition '''
+    response = client.simulate_post('/auth/api/v1/invalidate')
     assert response.status == falcon.HTTP_401
     assert response.json['title']  == '401 Unauthorized'
     assert response.json['description'] == 'Missing Authorization Header'
@@ -60,8 +68,11 @@ def test_new_user_fail(client, monkeypatch):
 
 #def test_login(client, monkeypatch):
 #    ''' Test the login endpoint - pass condition '''
-#    monkeypatch.setattr('req.context["db_session"].query', lambda obj: ['test'])
+#    #monkeypatch.setattr('req.context["db_session"].query', lambda obj: ['test'])
+#    req = mock.Mock()
+#    req.context['db_session'].query.return_value = ['test']
 #
 #    body = json.dumps(test_user_dict)
 #    response = client.simulate_post('/auth/api/v1/login', body=body)
-#    assert response.status == falcon.HTTP_OK
+#    assert response.status == falcon.HTTP_OKs
+    

@@ -5,6 +5,7 @@ import json
 import falcon
 import pytest
 from falcon import testing
+from falcon_auth import JWTAuthBackend, FalconAuthMiddleware
 from unittest import mock
 
 import jwtapi.app
@@ -65,3 +66,12 @@ def test_new_user_fail(client, monkeypatch):
     response = client.simulate_post('/auth/api/v1/user-mgmt', body=body)
     assert response.status == falcon.HTTP_409
     assert response.json['status'] == fail_status
+
+def test_invalidate(client, monkeypatch):
+
+    # path middleware to set context
+    monkeypatch.setattr('falcon_auth.JWTAuthBackend.authenticate', lambda w,x,y,z : {'id': 1})
+
+    response = client.simulate_post('/auth/api/v1/invalidate')
+    assert response.status == falcon.HTTP_OK
+

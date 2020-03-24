@@ -20,11 +20,14 @@ import jwtapi.app_auth as app_auth
 def test_invalidate_post():
     #
     #env = falcon.testing.create_environ()
-    #req = falcon.request.Request(env, email='joshah@fakemail.com')
+    #req = falcon.request.Request(env)
     #resp = falcon.Response()
     #
+    #monkeypatch.setattr('falcon.request.Request.media', {'email': 'ye'})
+    #authenticate
+    #
     #r = app_auth.UserMgmt().on_post(req, resp)
-    ##req = falcon.testing.helpers.create_req()
+    #req = falcon.testing.helpers.create_req()
     pass
 
 

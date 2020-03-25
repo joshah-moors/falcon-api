@@ -100,6 +100,14 @@ class RefreshToken:
         )
 
     def on_post(self, req, resp):
+        if req.media is None:
+            resp.status = falcon.HTTP_401
+            return
+
+        if 'refreshToken' not in req.media:
+            resp.status = falcon.HTTP_401
+            return
+
         refresh_token = req.media['refreshToken']
         # Verify refresh token
         try:

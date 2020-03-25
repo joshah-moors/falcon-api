@@ -6,7 +6,7 @@ import falcon
 import pytest
 from falcon import testing
 from falcon_auth import JWTAuthBackend, FalconAuthMiddleware
-from unittest import mock
+from unittest.mock import MagicMock
 
 import jwtapi.app
 import jwtapi.app_db
@@ -21,6 +21,16 @@ test_user_dict = {
 def client():
     api = jwtapi.app.create_app()
     return testing.TestClient(api)
+
+class DBSessionPath:
+    def __init__(self, records):
+        self.records = records
+    def delete(self, **kwargs):
+        return self
+    def filter(self, x):
+        return self
+    def all(self):
+        return self.records
 
 
 
@@ -42,19 +52,49 @@ def test_login_missing_params(client, monkeypatch):
     assert response.status == falcon.HTTP_409
     assert response.json['status'] == 'missing username/password'
 
-#def test_login_success(client, monkeypatch):
-#    ''' Test login route - success condition '''
-#    media_dict = {
-#        'username': 'fakeuser2020',
-#        'password': 'F@ke!s0NtheRI$e'
-#    }
-#
-#    # patch request input
-#    monkeypatch.setattr('falcon.request.Request.media', media_dict)
-#
-#    response = client.simulate_post('/auth/api/v1/login')
-#    assert response.status == falcon.HTTP_OK
+def test_login_no_user_found(client, monkeypatch):
+    ''' Test login route - fail condition '''
     
+    # patch request input & bypass auth
+    media_dict = {k:v for k,v in test_user_dict.items() if k != 'email'}
+    monkeypatch.setattr('falcon.request.Request.media', media_dict)
+    monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x,y: DBSessionPath([]))
+
+    response = client.simulate_post('/auth/api/v1/login')
+    assert response.status == falcon.HTTP_409
+    assert response.json['status'] == 'user not found'
+
+def test_login_no_pw_match(client, monkeypatch):
+    ''' Test login route, no password match - fail condition '''
+
+    # patch request input & bypass auth
+    media_dict = {k:v for k,v in test_user_dict.items() if k != 'email'}
+    t_user = jwtapi.app_db.User(
+        test_user_dict['username'],
+        'some_pw_hash', 
+        test_user_dict['email'])
+    monkeypatch.setattr('falcon.request.Request.media', media_dict)
+    monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x,y: DBSessionPath([t_user]))
+
+    response = client.simulate_post('/auth/api/v1/login')
+    assert response.status == falcon.HTTP_401
+
+def test_login_success(client, monkeypatch):
+    ''' Test login route, hash match - success condition '''
+
+    # patch request input & db functions
+    media_dict = {k:v for k,v in test_user_dict.items() if k != 'email'}
+    t_user = jwtapi.app_db.User(
+        test_user_dict['username'],
+        jwtapi.app_db.hash_this(test_user_dict['password'], jwtapi.app_db.SALT), 
+        test_user_dict['email'])
+    monkeypatch.setattr('falcon.request.Request.media', media_dict)
+    monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x,y: DBSessionPath([t_user]))
+    monkeypatch.setattr('sqlalchemy.orm.session.Session.add', lambda x,y: True)
+    monkeypatch.setattr('sqlalchemy.orm.session.Session.commit', lambda x: True)
+
+    response = client.simulate_post('/auth/api/v1/login')
+    assert response.status == falcon.HTTP_OK
 
 # Route: /auth/api/v1/refresh
 # Route: /auth/api/v1/invalidate
@@ -129,4 +169,3 @@ def test_private_route_mock_auth(client, monkeypatch):
     assert response.status == falcon.HTTP_OK
     assert response.json['status'] == 'success'
     assert response.json['data'] == 'joshah is cool (don\'t tell anyone)'
-

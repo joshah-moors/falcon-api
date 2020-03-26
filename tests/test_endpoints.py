@@ -193,6 +193,8 @@ def test_invalidate(client, monkeypatch):
 
     # path middleware to set context
     monkeypatch.setattr('falcon_auth.JWTAuthBackend.authenticate', lambda w, x, y, z: {'id': 1})
+    monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x, y: DBSessionPath(None))
+    monkeypatch.setattr('sqlalchemy.orm.session.Session.commit', lambda x: True)
 
     response = client.simulate_post('/auth/api/v1/invalidate')
     assert response.status == falcon.HTTP_OK

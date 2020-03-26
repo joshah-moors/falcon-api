@@ -1,11 +1,21 @@
-# /bin/usr/env python3
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+
 '''
 Integration test script for falcon-jwt-api
 
 With the api running in the test environment, this script performs the following validations:
     • Fetch the public data
-    • Create a new user on the user-mgmt endpoint
-    • Fetch the public data as new user
+    • Test private endpoint is locked down
+    • Create a new user
+    • Login/receive token as new user
+    • Fetch the private data
+    • Use refresh token to obtain new access token
+    • Invalidate the refresh token
+    • Try to use invalid refresh token to get new access token
+
+Afer all runs, incliding fail condition, 
+teardown function clears test user from the db
 
 '''
 
@@ -38,6 +48,9 @@ test_collection = (
                     'test_create_user',
                     'test_login',
                     'test_fetch_private_success',
+                    'test_refresh_token',
+                    'test_invalidate_token',
+                    'test_refrest_with_invalid_token',
                     'teardown',
                    )
 
@@ -98,6 +111,34 @@ def test_fetch_private_success(tss):
     assert r.json()['data'] == 'joshah is cool (don\'t tell anyone)'
 
 
+def test_refresh_token(tss):
+    r = requests.post(f'{BASE_URL}/auth/api/v1/refresh',
+                       data=json.dumps({'refreshToken': tss['refreshToken']}),
+                       headers={'content-type': 'application/json'})
+    assert r.status_code == 200
+    for key in ('accessToken', 'refreshToken', 'refreshAge'):
+        assert key in r.json().keys()
+
+    # Update tokens in test store
+    for key, value in r.json().items():
+        tss[key] = value
+
+
+def test_invalidate_token(tss):
+    r = requests.post(f'{BASE_URL}/auth/api/v1/invalidate',
+                        headers={'Authorization': f'JWT {tss["accessToken"]}'})
+    assert r.status_code == 200
+
+
+def test_refrest_with_invalid_token(tss):
+    r = requests.post(f'{BASE_URL}/auth/api/v1/refresh',
+                       data=json.dumps({'refreshToken': tss['refreshToken']}),
+                       headers={'content-type': 'application/json'})
+
+    assert r.status_code == 409
+    assert r.json()['status'] == 'user/token not found'
+
+
 def teardown(tss):
     ''' clean-up test user made in db '''
     engine = create_engine('sqlite:///../jwtapi/db/backend.db')
@@ -109,29 +150,7 @@ def teardown(tss):
 
     session.commit()
     session.close()
-    
 
-#def test_posted_image_gets_saved():
-#    file_save_prefix = '/tmp/'
-#    location_prefix = '/images/'
-#    fake_image_bytes = b'fake-image-bytes'
-#
-#    response = requests.post(
-#        'http://localhost:8000/images',
-#        data=fake_image_bytes,
-#        headers={'content-type': 'image/png'}
-#    )
-#
-#    assert response.status_code == 201
-#    location = response.headers['location']
-#    assert location.startswith(location_prefix)
-#    image_name = location.replace(location_prefix, '')
-#
-#    file_path = file_save_prefix + image_name
-#    with open(file_path, 'rb') as image_file:
-#        assert image_file.read() == fake_image_bytes
-#
-#    os.remove(file_path)
 
 if __name__ == '__main__':
     run_tests()

@@ -1,4 +1,5 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
 
 import json
 import uuid
@@ -9,17 +10,13 @@ from falcon_auth import JWTAuthBackend
 from sqlalchemy import or_
 
 import jwtapi.app_db as app_db
+import jwtapi.env as ENV
 from jwtapi.app_db import User
-
-# In production - this is held in the environment or seperate setting file
-APP_SECRET = '__some_app_secret__'
 
 # JWT Backends
 user_loader = lambda token_content: token_content['user']
-jwt_exp_time = 15 * 60    # 15 mins * 60 seconds
-jwt_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=jwt_exp_time)
-refresh_exp_time = 7 * 24 * 60 * 60   # 7 days
-refresh_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=refresh_exp_time)
+jwt_auth = JWTAuthBackend(user_loader, ENV.APP_SECRET, expiration_delta=ENV.EXP_ACCESS_TOKEN)
+refresh_auth = JWTAuthBackend(user_loader, ENV.APP_SECRET, expiration_delta=ENV.EXP_REFRESH_TOKEN)
 
 
 class Login:
@@ -82,7 +79,7 @@ class Login:
                 resp_dict = {
                     'accessToken': jwt,
                     'refreshToken': refresh_token,
-                    'refreshAge': refresh_exp_time,
+                    'refreshAge': ENV.EXP_REFRESH_TOKEN,
                 }
                 resp.body = json.dumps(resp_dict)
                 resp.status = falcon.HTTP_200
@@ -168,7 +165,7 @@ class RefreshToken:
         resp_dict = {
             'accessToken': jwt,
             'refreshToken': refresh_token,
-            'refreshAge': refresh_exp_time,
+            'refreshAge': ENV.EXP_REFRESH_TOKEN,
         }
         resp.body = json.dumps(resp_dict)
         resp.status = falcon.HTTP_200

@@ -2,7 +2,6 @@
 
 import json
 
-import falcon
 
 class PublicInfo:
     def on_get(self, req, resp):
@@ -15,11 +14,10 @@ class PublicInfo:
 
 class PrivateInfo:
     def on_get(self, req, resp):
-        # Verify Authentication added user to request context
-        print(f'Token Showed User Logged in is: {req.context}')
-        #
+        current_user = req.context['user']['username']
         return_data = {
             'status': 'success',
             'data': 'joshah is cool (don\'t tell anyone)',
+            'context': f'this data was produced for: {current_user}'
         }
         resp.body = json.dumps(return_data)

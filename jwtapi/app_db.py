@@ -1,4 +1,5 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
 '''
 My first time using SQLAlchemy, starting with:
     https://auth0.com/blog/sqlalchemy-orm-tutorial-for-python-developers/
@@ -6,17 +7,16 @@ My first time using SQLAlchemy, starting with:
 
 import datetime
 import hashlib
-import os
-import uuid
 
-from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, DateTime, func, or_
+from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
+import jwtapi.env as ENV
+
 SALT = b'\xd6\xea\xc1A\xf3!\xce\xc7\xa6\xec\x93\xec\xcc_{,\x08\x9aWK\xb2R\xc4\x08\xa8\xa1@\xf6\x07\x7fe\xea'
 
-engine = create_engine('sqlite:///jwtapi/db/backend.db')
-#engine = create_engine('sqlite:///db/backend.db')
+engine = create_engine(f'sqlite:///{ENV.DB_PATH}')
 Session = sessionmaker(bind=engine)
 
 Base = declarative_base()
@@ -58,7 +58,7 @@ class User(Base):
 
 class RefreshToken(Base):
     __tablename__ = 'refresh_tokens'
-    
+
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     token_secret = Column(String)
     create_ts = Column(DateTime, default=datetime.datetime.utcnow)
@@ -71,15 +71,15 @@ class RefreshToken(Base):
 
 
 class SQLAlchemySessionManager:
-    """
-    Create a session for every request and close it when the request ends.
-    """
+    ''' Create a session for every request, close it when the request ends '''
     def __init__(self, Session):
         self.db_session = Session
+
     def process_resource(self, req, resp, resource, params):
         if req.method == 'OPTIONS':
             return
         req.context['db_session'] = self.db_session()
+
     def process_response(self, req, resp, resource, req_succeeded):
         if req.method == 'OPTIONS':
             return
@@ -114,6 +114,7 @@ if __name__ == '__main__':
     for user in users:
         user_dict[user[0]] = User(*user)
 
+    import uuid
     refresh_tokens, token_dict = [
         ('texasLonghorn', str(uuid.uuid4()), user_dict['texasLonghorn']),
         ('SonnySideUp', str(uuid.uuid4()), user_dict['SonnySideUp']),
@@ -121,7 +122,7 @@ if __name__ == '__main__':
     ], {}
     for token in refresh_tokens:
         token_dict[token[0]] = RefreshToken(*token)
-    
+
     # Insert the records
 
     #print(user_dict)

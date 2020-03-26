@@ -1,4 +1,5 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
 
 import json
 import uuid
@@ -9,17 +10,13 @@ from falcon_auth import JWTAuthBackend
 from sqlalchemy import or_
 
 import jwtapi.app_db as app_db
+import jwtapi.env as ENV
 from jwtapi.app_db import User
-
-# In production - this is held in the environment or seperate setting file
-APP_SECRET = '__some_app_secret__'
 
 # JWT Backends
 user_loader = lambda token_content: token_content['user']
-jwt_exp_time = 15 * 60    # 15 mins * 60 seconds
-jwt_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=jwt_exp_time)
-refresh_exp_time = 7 * 24 * 60 * 60   # 7 days
-refresh_auth = JWTAuthBackend(user_loader, APP_SECRET, expiration_delta=refresh_exp_time)
+jwt_auth = JWTAuthBackend(user_loader, ENV.APP_SECRET, expiration_delta=ENV.EXP_ACCESS_TOKEN)
+refresh_auth = JWTAuthBackend(user_loader, ENV.APP_SECRET, expiration_delta=ENV.EXP_REFRESH_TOKEN)
 
 
 class Login:
@@ -33,11 +30,10 @@ class Login:
             resp.body = json.dumps({'status': 'missing username/password'})
             resp.status = falcon.HTTP_409
             return
-            
-        username = req.media['username']
-        password = req.media['password']
+
+        username, password = req.media['username'], req.media['password']
         dbs = req.context['db_session']
-        
+
         # Ensure user exists
         user_result = dbs.query(User)                                                    \
                          .filter(or_(User.username == username, User.email == username)) \
@@ -49,7 +45,7 @@ class Login:
 
         # Hash the user-provided password
         pw_hash = app_db.hash_this(password, app_db.SALT)
-        
+
         # If newly generated pw hash mathes db:
         #        - Create JWT, DB log refresh token, return JWT and refresh token
         for user in user_result:
@@ -83,7 +79,7 @@ class Login:
                 resp_dict = {
                     'accessToken': jwt,
                     'refreshToken': refresh_token,
-                    'refreshAge': refresh_exp_time,
+                    'refreshAge': ENV.EXP_REFRESH_TOKEN,
                 }
                 resp.body = json.dumps(resp_dict)
                 resp.status = falcon.HTTP_200
@@ -111,7 +107,7 @@ class RefreshToken:
         refresh_token = req.media['refreshToken']
         # Verify refresh token
         try:
-            payload = jwt_lib.decode(jwt=refresh_token, 
+            payload = jwt_lib.decode(jwt=refresh_token,
                                      key=refresh_auth.secret_key,
                                      options=self.claim_opts,
                                      algorithms=[refresh_auth.algorithm],
@@ -121,10 +117,10 @@ class RefreshToken:
         except jwt_lib.InvalidTokenError as ex:
             raise falcon.HTTPUnauthorized(description=str(ex))
         #print(payload)
-        
+
         this_user = payload['user']['username']
         this_refresh_secret = payload['user']['refresh']
-        
+
         dbs = req.context['db_session']
         user_result = dbs.query(User).join(app_db.RefreshToken)     \
                          .filter(User.username == this_user)        \
@@ -165,11 +161,11 @@ class RefreshToken:
                 'id': user_id,
                 'refresh': refresh_secret
             })
-        
+
         resp_dict = {
             'accessToken': jwt,
             'refreshToken': refresh_token,
-            'refreshAge': refresh_exp_time,
+            'refreshAge': ENV.EXP_REFRESH_TOKEN,
         }
         resp.body = json.dumps(resp_dict)
         resp.status = falcon.HTTP_200
@@ -193,7 +189,7 @@ class UserMgmt:
         #
         new_user = User(username, app_db.hash_this(password, app_db.SALT), email)
         crt_status, crt_msg = new_user.create()
-        if crt_status == False:
+        if crt_status is False:
             resp.body = json.dumps({'status': crt_msg})
             resp.status = falcon.HTTP_409
             return

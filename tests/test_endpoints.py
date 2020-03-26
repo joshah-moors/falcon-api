@@ -252,7 +252,7 @@ def test_private_route_mock_auth(client, monkeypatch):
     ''' Test the protected route - success case '''
 
     # path middleware to set context
-    monkeypatch.setattr('falcon_auth.JWTAuthBackend.authenticate', lambda w, x, y, z: {'id': 1})
+    monkeypatch.setattr('falcon_auth.JWTAuthBackend.authenticate', lambda w, x, y, z: {'id': 1, 'username': 'test_user'})
 
     response = client.simulate_get('/media/api/v1/private')
     assert response.status == falcon.HTTP_OK

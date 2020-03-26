@@ -24,6 +24,7 @@ import sys
 import time
 import traceback
 
+import pytest
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -39,50 +40,44 @@ test_user = {
     'password': 'this_test_P@$sW0%D'
 }
 
-# test session store for holding state between tests
-tss = {}
-
-test_collection = (
-                    'test_fetch_public',
-                    'test_fetch_private_fail',
-                    'test_create_user',
-                    'test_login',
-                    'test_fetch_private_success',
-                    'test_refresh_token',
-                    'test_invalidate_token',
-                    'test_refrest_with_invalid_token',
-                    'teardown',
-                   )
+# Class instantiated in the session fixture to hold test state
+class State:
+    data = {}
 
 
-def run_tests():
-    try:
-        for test in test_collection:
-            exec(f'print("Running: {test}"); {test}(tss)')
-        print('\n\t - ALL TESTS SUCCEEDED - \n')
-    except Exception as e:
-        print(f'\nFAILURE while running tests: {e}')
-        traceback.print_exc()
-        try:
-            teardown(tss)
-        except Exception as teardown_e:
-            print(f'Error removing test user from db: {teardown_e}')
-        sys.exit(1)
+@pytest.fixture(scope='session')
+def ts() -> State:
+    test_state = State()
+    return test_state
 
 
-def test_fetch_public(tss):
+@pytest.fixture(scope="session", autouse=True)
+def final_teardown(request):
+    ''' clean-up test user made in db '''
+    def db_cleanup():
+        engine = create_engine('sqlite:///../jwtapi/db/backend.db')
+        session = sessionmaker(bind=engine)()
+        session.query(app_db.User)                                    \
+               .filter(app_db.User.username == test_user['username']) \
+               .delete()
+        session.commit()
+        session.close()
+    request.addfinalizer(db_cleanup)
+
+
+def test_fetch_public():
     r = requests.get(f'{BASE_URL}/media/api/v1/public')
     assert r.status_code == 200
     assert r.json()['data'] == 'it\'s all good'
 
 
-def test_fetch_private_fail(tss):
+def test_fetch_private_fail():
     r = requests.get(f'{BASE_URL}/media/api/v1/private')
     assert r.status_code == 401
     assert r.json()['title'] == '401 Unauthorized'
 
 
-def test_create_user(tss):
+def test_create_user():
     r = requests.post(f'{BASE_URL}/auth/api/v1/user-mgmt',
                        data=json.dumps(test_user),
                        headers={'content-type': 'application/json'})
@@ -90,7 +85,7 @@ def test_create_user(tss):
     assert r.json()['status'] == 'success'
 
 
-def test_login(tss):
+def test_login(ts: State):
     r = requests.post(f'{BASE_URL}/auth/api/v1/login',
                        data=json.dumps(test_user),
                        headers={'content-type': 'application/json'})
@@ -100,20 +95,20 @@ def test_login(tss):
 
     # Hold tokens for later test use
     for key, value in r.json().items():
-        tss[key] = value
+        ts.data[key] = value
 
 
-def test_fetch_private_success(tss):
+def test_fetch_private_success(ts: State):
     r = requests.get(f'{BASE_URL}/media/api/v1/private',
-                       headers={'Authorization': f'JWT {tss["accessToken"]}'})
+                       headers={'Authorization': f'JWT {ts.data["accessToken"]}'})
     assert r.status_code == 200
     assert r.json()['status'] == 'success'
     assert r.json()['data'] == 'joshah is cool (don\'t tell anyone)'
 
 
-def test_refresh_token(tss):
+def test_refresh_token(ts: State):
     r = requests.post(f'{BASE_URL}/auth/api/v1/refresh',
-                       data=json.dumps({'refreshToken': tss['refreshToken']}),
+                       data=json.dumps({'refreshToken': ts.data['refreshToken']}),
                        headers={'content-type': 'application/json'})
     assert r.status_code == 200
     for key in ('accessToken', 'refreshToken', 'refreshAge'):
@@ -121,36 +116,23 @@ def test_refresh_token(tss):
 
     # Update tokens in test store
     for key, value in r.json().items():
-        tss[key] = value
+        ts.data[key] = value
 
 
-def test_invalidate_token(tss):
+def test_invalidate_token(ts: State):
     r = requests.post(f'{BASE_URL}/auth/api/v1/invalidate',
-                        headers={'Authorization': f'JWT {tss["accessToken"]}'})
+                        headers={'Authorization': f'JWT {ts.data["accessToken"]}'})
     assert r.status_code == 200
 
 
-def test_refrest_with_invalid_token(tss):
+def test_refrest_with_invalid_token(ts: State):
     r = requests.post(f'{BASE_URL}/auth/api/v1/refresh',
-                       data=json.dumps({'refreshToken': tss['refreshToken']}),
+                       data=json.dumps({'refreshToken': ts.data['refreshToken']}),
                        headers={'content-type': 'application/json'})
 
     assert r.status_code == 409
     assert r.json()['status'] == 'user/token not found'
 
 
-def teardown(tss):
-    ''' clean-up test user made in db '''
-    engine = create_engine('sqlite:///../jwtapi/db/backend.db')
-    session = sessionmaker(bind=engine)()
-
-    session.query(app_db.User)                                    \
-           .filter(app_db.User.username == test_user['username']) \
-           .delete()
-
-    session.commit()
-    session.close()
-
-
 if __name__ == '__main__':
-    run_tests()
+    pytest.main([__file__])

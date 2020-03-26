@@ -33,11 +33,10 @@ class Login:
             resp.body = json.dumps({'status': 'missing username/password'})
             resp.status = falcon.HTTP_409
             return
-            
-        username = req.media['username']
-        password = req.media['password']
+
+        username, password = req.media['username'], req.media['password']
         dbs = req.context['db_session']
-        
+
         # Ensure user exists
         user_result = dbs.query(User)                                                    \
                          .filter(or_(User.username == username, User.email == username)) \
@@ -49,7 +48,7 @@ class Login:
 
         # Hash the user-provided password
         pw_hash = app_db.hash_this(password, app_db.SALT)
-        
+
         # If newly generated pw hash mathes db:
         #        - Create JWT, DB log refresh token, return JWT and refresh token
         for user in user_result:
@@ -111,7 +110,7 @@ class RefreshToken:
         refresh_token = req.media['refreshToken']
         # Verify refresh token
         try:
-            payload = jwt_lib.decode(jwt=refresh_token, 
+            payload = jwt_lib.decode(jwt=refresh_token,
                                      key=refresh_auth.secret_key,
                                      options=self.claim_opts,
                                      algorithms=[refresh_auth.algorithm],
@@ -121,10 +120,10 @@ class RefreshToken:
         except jwt_lib.InvalidTokenError as ex:
             raise falcon.HTTPUnauthorized(description=str(ex))
         #print(payload)
-        
+
         this_user = payload['user']['username']
         this_refresh_secret = payload['user']['refresh']
-        
+
         dbs = req.context['db_session']
         user_result = dbs.query(User).join(app_db.RefreshToken)     \
                          .filter(User.username == this_user)        \
@@ -165,7 +164,7 @@ class RefreshToken:
                 'id': user_id,
                 'refresh': refresh_secret
             })
-        
+
         resp_dict = {
             'accessToken': jwt,
             'refreshToken': refresh_token,
@@ -193,7 +192,7 @@ class UserMgmt:
         #
         new_user = User(username, app_db.hash_this(password, app_db.SALT), email)
         crt_status, crt_msg = new_user.create()
-        if crt_status == False:
+        if crt_status is False:
             resp.body = json.dumps({'status': crt_msg})
             resp.status = falcon.HTTP_409
             return

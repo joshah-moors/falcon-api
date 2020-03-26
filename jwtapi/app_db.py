@@ -6,10 +6,8 @@ My first time using SQLAlchemy, starting with:
 
 import datetime
 import hashlib
-import os
-import uuid
 
-from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, DateTime, func, or_
+from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
@@ -58,7 +56,7 @@ class User(Base):
 
 class RefreshToken(Base):
     __tablename__ = 'refresh_tokens'
-    
+
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     token_secret = Column(String)
     create_ts = Column(DateTime, default=datetime.datetime.utcnow)
@@ -76,10 +74,12 @@ class SQLAlchemySessionManager:
     """
     def __init__(self, Session):
         self.db_session = Session
+
     def process_resource(self, req, resp, resource, params):
         if req.method == 'OPTIONS':
             return
         req.context['db_session'] = self.db_session()
+
     def process_response(self, req, resp, resource, req_succeeded):
         if req.method == 'OPTIONS':
             return
@@ -114,6 +114,7 @@ if __name__ == '__main__':
     for user in users:
         user_dict[user[0]] = User(*user)
 
+    import uuid
     refresh_tokens, token_dict = [
         ('texasLonghorn', str(uuid.uuid4()), user_dict['texasLonghorn']),
         ('SonnySideUp', str(uuid.uuid4()), user_dict['SonnySideUp']),
@@ -121,7 +122,7 @@ if __name__ == '__main__':
     ], {}
     for token in refresh_tokens:
         token_dict[token[0]] = RefreshToken(*token)
-    
+
     # Insert the records
 
     #print(user_dict)

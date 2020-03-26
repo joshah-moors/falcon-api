@@ -2,7 +2,6 @@
 
 import json
 
-import falcon
 
 class PublicInfo:
     def on_get(self, req, resp):

@@ -14,7 +14,7 @@ With the api running in the test environment, this script performs the following
     • Invalidate the refresh token
     • Try to use invalid refresh token to get new access token
 
-Afer all runs, incliding fail condition, 
+Afer all runs, incliding fail condition,
 teardown function clears test user from the db
 
 '''
@@ -65,8 +65,8 @@ def run_tests():
         traceback.print_exc()
         try:
             teardown(tss)
-        except:
-            print('Error removing test user from db')
+        except Exception as teardown_e:
+            print(f'Error removing test user from db: {teardown_e}')
         sys.exit(1)
 
 

@@ -54,12 +54,6 @@ class Login:
                     'username': user.username,
                     'id': user.id
                     })
-                #
-                #
-                #    CREATE REFRESH TOKEN SHOULD BE WRAPPED IN INPUT OF
-                #                     "Keep me logged in option"
-                #
-                #
                 # Create a refresh token secret
                 refresh_secret = str(uuid.uuid4())
                 # Log refresh secret in the db -- delete if exists first

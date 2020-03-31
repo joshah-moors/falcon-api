@@ -39,6 +39,13 @@ class DBSessionPath:
         return self
 
 
+def test_cors_header(client):
+    ''' Ensure CORS header is being returned '''
+    response = client.simulate_options('/media/api/v1/private')
+    assert response.status == falcon.HTTP_200
+    assert response.headers['Access-Control-Allow-Origin'] == '*'
+
+
 # Route: /auth/api/v1/login
 
 

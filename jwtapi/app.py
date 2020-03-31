@@ -21,10 +21,11 @@ open_routes = ['/auth/api/v1/login',
 
 auth_middleware = FalconAuthMiddleware(app_auth.jwt_auth, exempt_routes=open_routes)
 db_middleware = SQLAlchemySessionManager(Session)
+cors_middleware = app_auth.CORSComponent()
 
 
 def create_app():
-    api = falcon.API(middleware=[auth_middleware, db_middleware])
+    api = falcon.API(middleware=[auth_middleware, db_middleware, cors_middleware])
     api.add_route('/auth/api/v1/login', app_auth.Login())
     api.add_route('/auth/api/v1/refresh', app_auth.RefreshToken())
     api.add_route('/auth/api/v1/invalidate', app_auth.InvalidateToken())

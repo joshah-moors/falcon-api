@@ -5,6 +5,7 @@ import json
 import falcon
 import pytest
 from falcon import testing
+from unittest.mock import MagicMock
 
 import jwtapi.app
 import jwtapi.app_db
@@ -41,7 +42,7 @@ class DBSessionPath:
 
 def test_cors_header(client):
     ''' Ensure CORS header is being returned '''
-    response = client.simulate_options('/media/api/v1/private')
+    response = client.simulate_options('/api/v1/media/private')
     assert response.status == falcon.HTTP_200
     assert response.headers['Access-Control-Allow-Origin'] == '*'
 
@@ -51,7 +52,7 @@ def test_cors_header(client):
 
 def test_login_no_params(client):
     ''' Test login route, no params - fail condition '''
-    response = client.simulate_post('/auth/api/v1/login')
+    response = client.simulate_post('/api/v1/auth/login')
     assert response.status == falcon.HTTP_409
     assert response.json['status'] == 'missing username/password'
 
@@ -62,7 +63,7 @@ def test_login_missing_params(client, monkeypatch):
     # patch request input
     monkeypatch.setattr('falcon.request.Request.media', {'username': 'fakeuser2020'})
 
-    response = client.simulate_post('/auth/api/v1/login')
+    response = client.simulate_post('/api/v1/auth/login')
     assert response.status == falcon.HTTP_409
     assert response.json['status'] == 'missing username/password'
 
@@ -75,7 +76,7 @@ def test_login_no_user_found(client, monkeypatch):
     monkeypatch.setattr('falcon.request.Request.media', media_dict)
     monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x, y: DBSessionPath([]))
 
-    response = client.simulate_post('/auth/api/v1/login')
+    response = client.simulate_post('/api/v1/auth/login')
     assert response.status == falcon.HTTP_409
     assert response.json['status'] == 'user not found'
 
@@ -92,7 +93,7 @@ def test_login_no_pw_match(client, monkeypatch):
     monkeypatch.setattr('falcon.request.Request.media', media_dict)
     monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x, y: DBSessionPath([mock_user]))
 
-    response = client.simulate_post('/auth/api/v1/login')
+    response = client.simulate_post('/api/v1/auth/login')
     assert response.status == falcon.HTTP_401
 
 
@@ -110,7 +111,7 @@ def test_login_success(client, monkeypatch):
     monkeypatch.setattr('sqlalchemy.orm.session.Session.add', lambda x, y: True)
     monkeypatch.setattr('sqlalchemy.orm.session.Session.commit', lambda x: True)
 
-    response = client.simulate_post('/auth/api/v1/login')
+    response = client.simulate_post('/api/v1/auth/login')
     assert response.status == falcon.HTTP_OK
 
 
@@ -119,7 +120,7 @@ def test_login_success(client, monkeypatch):
 
 def test_refresh_route_no_auth(client):
     ''' Test refresh route - fail condition '''
-    response = client.simulate_post('/auth/api/v1/refresh')
+    response = client.simulate_post('/api/v1/auth/refresh')
     assert response.status == falcon.HTTP_401
 
 
@@ -127,7 +128,7 @@ def test_refresh_no_token(client, monkeypatch):
     ''' Test refresh route, no token in body - fail condition'''
     monkeypatch.setattr('falcon.request.Request.media', {'user': 'fake'})
 
-    response = client.simulate_post('/auth/api/v1/refresh')
+    response = client.simulate_post('/api/v1/auth/refresh')
     assert response.status == falcon.HTTP_401
 
 
@@ -135,7 +136,7 @@ def test_refresh_invalid_token(client, monkeypatch):
     ''' Test refresh route, with invalid token in header'''
     monkeypatch.setattr('falcon.request.Request.media', {'refreshToken': 'fake'})
 
-    response = client.simulate_post('/auth/api/v1/refresh')
+    response = client.simulate_post('/api/v1/auth/refresh')
     assert response.status == falcon.HTTP_401
 
 
@@ -151,7 +152,7 @@ def test_refresh_no_secret_in_db(client, monkeypatch):
     monkeypatch.setattr('jwt.decode', lambda **kwargs: mock_payload)
     monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x, y: DBSessionPath([]))
 
-    response = client.simulate_post('/auth/api/v1/refresh')
+    response = client.simulate_post('/api/v1/auth/refresh')
     assert response.status == falcon.HTTP_409
     assert response.json['status'] == 'user/token not found'
 
@@ -168,17 +169,14 @@ def test_refresh_valid(client, monkeypatch):
         jwtapi.app_db.hash_this(mock_user_dict['password'], jwtapi.app_db.SALT),
         mock_user_dict['email'])
 
-    class MockToken:
-        token_secret = mock_refresh_secret
-
     monkeypatch.setattr('falcon.request.Request.media', {'refreshToken': mock_refresh_secret})
     monkeypatch.setattr('jwt.decode', lambda **kwargs: mock_payload)
     monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x, y: DBSessionPath([mock_user]))
     monkeypatch.setattr('sqlalchemy.orm.session.Session.add', lambda x, y: True)
     monkeypatch.setattr('sqlalchemy.orm.session.Session.commit', lambda x: True)
-    monkeypatch.setattr('jwtapi.app_db.User.refresh_token', MockToken())
+    monkeypatch.setattr('jwtapi.app_db.User.refresh_token', MagicMock(token_secret=mock_refresh_secret))
 
-    response = client.simulate_post('/auth/api/v1/refresh')
+    response = client.simulate_post('/api/v1/auth/refresh')
     assert response.status == falcon.HTTP_OK
     for attr in ('accessToken', 'refreshToken', 'refreshAge'):
         assert attr in response.json
@@ -189,7 +187,7 @@ def test_refresh_valid(client, monkeypatch):
 
 def test_invalidate_route_no_auth(client):
     ''' Test invalidate route - fail condition '''
-    response = client.simulate_post('/auth/api/v1/invalidate')
+    response = client.simulate_post('/api/v1/auth/invalidate')
     assert response.status == falcon.HTTP_401
     assert response.json['title'] == '401 Unauthorized'
     assert response.json['description'] == 'Missing Authorization Header'
@@ -203,7 +201,7 @@ def test_invalidate(client, monkeypatch):
     monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x, y: DBSessionPath(None))
     monkeypatch.setattr('sqlalchemy.orm.session.Session.commit', lambda x: True)
 
-    response = client.simulate_post('/auth/api/v1/invalidate')
+    response = client.simulate_post('/api/v1/auth/invalidate')
     assert response.status == falcon.HTTP_OK
 
 
@@ -217,7 +215,7 @@ def test_new_user_success(client, monkeypatch):
     monkeypatch.setattr('jwtapi.app_db.User.create', lambda self: (True, ''))
 
     body = json.dumps(mock_user_dict)
-    response = client.simulate_post('/auth/api/v1/user-mgmt', body=body)
+    response = client.simulate_post('/api/v1/auth/user-mgmt', body=body)
     assert response.status == falcon.HTTP_OK
     assert response.json['status'] == 'success'
 
@@ -230,7 +228,7 @@ def test_new_user_fail(client, monkeypatch):
     monkeypatch.setattr('jwtapi.app_db.User.create', lambda self: (False, fail_status))
 
     body = json.dumps(mock_user_dict)
-    response = client.simulate_post('/auth/api/v1/user-mgmt', body=body)
+    response = client.simulate_post('/api/v1/auth/user-mgmt', body=body)
     assert response.status == falcon.HTTP_409
     assert response.json['status'] == fail_status
 
@@ -240,7 +238,7 @@ def test_new_user_fail(client, monkeypatch):
 
 def test_public_route(client):
     ''' Test the open route '''
-    response = client.simulate_get('/media/api/v1/public')
+    response = client.simulate_get('/api/v1/media/public')
     assert response.status == falcon.HTTP_OK
     assert response.json['status'] == 'success'
     assert response.json['data'] == 'it\'s all good'
@@ -251,7 +249,7 @@ def test_public_route(client):
 
 def test_private_route_no_auth(client):
     ''' Test the protected route - fail case '''
-    response = client.simulate_get('/media/api/v1/private')
+    response = client.simulate_get('/api/v1/media/private')
     assert response.status == falcon.HTTP_401
     assert response.json['title'] == '401 Unauthorized'
     assert response.json['description'] == 'Missing Authorization Header'
@@ -263,7 +261,7 @@ def test_private_route_mock_auth(client, monkeypatch):
     # path middleware to set context
     monkeypatch.setattr('falcon_auth.JWTAuthBackend.authenticate', lambda w, x, y, z: {'id': 1, 'username': 'test_user'})
 
-    response = client.simulate_get('/media/api/v1/private')
+    response = client.simulate_get('/api/v1/media/private')
     assert response.status == falcon.HTTP_OK
     assert response.json['status'] == 'success'
     assert response.json['data'] == 'joshah is cool (don\'t tell anyone)'

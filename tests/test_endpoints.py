@@ -5,6 +5,7 @@ import json
 import falcon
 import pytest
 from falcon import testing
+from unittest.mock import MagicMock
 
 import jwtapi.app
 import jwtapi.app_db
@@ -168,15 +169,12 @@ def test_refresh_valid(client, monkeypatch):
         jwtapi.app_db.hash_this(mock_user_dict['password'], jwtapi.app_db.SALT),
         mock_user_dict['email'])
 
-    class MockToken:
-        token_secret = mock_refresh_secret
-
     monkeypatch.setattr('falcon.request.Request.media', {'refreshToken': mock_refresh_secret})
     monkeypatch.setattr('jwt.decode', lambda **kwargs: mock_payload)
     monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x, y: DBSessionPath([mock_user]))
     monkeypatch.setattr('sqlalchemy.orm.session.Session.add', lambda x, y: True)
     monkeypatch.setattr('sqlalchemy.orm.session.Session.commit', lambda x: True)
-    monkeypatch.setattr('jwtapi.app_db.User.refresh_token', MockToken())
+    monkeypatch.setattr('jwtapi.app_db.User.refresh_token', MagicMock(token_secret=mock_refresh_secret))
 
     response = client.simulate_post('/api/v1/auth/refresh')
     assert response.status == falcon.HTTP_OK

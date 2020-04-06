@@ -66,19 +66,19 @@ def final_teardown(request):
 
 
 def test_fetch_public():
-    r = requests.get(f'{BASE_URL}/media/api/v1/public')
+    r = requests.get(f'{BASE_URL}/api/v1/media/public')
     assert r.status_code == 200
     assert r.json()['data'] == 'it\'s all good'
 
 
 def test_fetch_private_fail():
-    r = requests.get(f'{BASE_URL}/media/api/v1/private')
+    r = requests.get(f'{BASE_URL}/api/v1/media/private')
     assert r.status_code == 401
     assert r.json()['title'] == '401 Unauthorized'
 
 
 def test_create_user():
-    r = requests.post(f'{BASE_URL}/auth/api/v1/user-mgmt',
+    r = requests.post(f'{BASE_URL}/api/v1/auth/user-mgmt',
                        data=json.dumps(test_user),
                        headers={'content-type': 'application/json'})
     assert r.status_code == 200
@@ -86,7 +86,7 @@ def test_create_user():
 
 
 def test_login(ts: State):
-    r = requests.post(f'{BASE_URL}/auth/api/v1/login',
+    r = requests.post(f'{BASE_URL}/api/v1/auth/login',
                        data=json.dumps(test_user),
                        headers={'content-type': 'application/json'})
     assert r.status_code == 200
@@ -99,7 +99,7 @@ def test_login(ts: State):
 
 
 def test_fetch_private_success(ts: State):
-    r = requests.get(f'{BASE_URL}/media/api/v1/private',
+    r = requests.get(f'{BASE_URL}/api/v1/media/private',
                        headers={'Authorization': f'JWT {ts.data["accessToken"]}'})
     assert r.status_code == 200
     assert r.json()['status'] == 'success'
@@ -107,7 +107,7 @@ def test_fetch_private_success(ts: State):
 
 
 def test_refresh_token(ts: State):
-    r = requests.post(f'{BASE_URL}/auth/api/v1/refresh',
+    r = requests.post(f'{BASE_URL}/api/v1/auth/refresh',
                        data=json.dumps({'refreshToken': ts.data['refreshToken']}),
                        headers={'content-type': 'application/json'})
     assert r.status_code == 200
@@ -120,13 +120,13 @@ def test_refresh_token(ts: State):
 
 
 def test_invalidate_token(ts: State):
-    r = requests.post(f'{BASE_URL}/auth/api/v1/invalidate',
+    r = requests.post(f'{BASE_URL}/api/v1/auth/invalidate',
                         headers={'Authorization': f'JWT {ts.data["accessToken"]}'})
     assert r.status_code == 200
 
 
 def test_refrest_with_invalid_token(ts: State):
-    r = requests.post(f'{BASE_URL}/auth/api/v1/refresh',
+    r = requests.post(f'{BASE_URL}/api/v1/auth/refresh',
                        data=json.dumps({'refreshToken': ts.data['refreshToken']}),
                        headers={'content-type': 'application/json'})
 

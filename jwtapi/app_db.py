@@ -69,6 +69,17 @@ class RefreshToken(Base):
         self.token_secret = token_secret
         self.user = user
 
+class UserHelpers:
+    def find_by_username_or_email(self, username):
+        session = Session()
+        
+        res = session.query(User)                                                    \
+                     .filter(or_(User.username == username, User.email == username)) \
+                     .all()
+
+        session.close()
+        return res
+
 
 class SQLAlchemySessionManager:
     ''' Create a session for every request, close it when the request ends '''

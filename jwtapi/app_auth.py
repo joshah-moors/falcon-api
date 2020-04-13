@@ -11,7 +11,7 @@ from sqlalchemy import or_
 
 import jwtapi.app_db as app_db
 import jwtapi.env as ENV
-from jwtapi.app_db import User
+from jwtapi.app_db import User, find_user
 
 # JWT Backends
 user_loader = lambda token_content: token_content['user']

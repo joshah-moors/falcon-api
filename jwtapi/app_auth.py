@@ -11,7 +11,7 @@ from sqlalchemy import or_
 
 import jwtapi.app_db as app_db
 import jwtapi.env as ENV
-from jwtapi.app_db import User
+from jwtapi.app_db import User, find_user
 
 # JWT Backends
 user_loader = lambda token_content: token_content['user']
@@ -38,6 +38,7 @@ class Login:
         user_result = dbs.query(User)                                                    \
                          .filter(or_(User.username == username, User.email == username)) \
                          .all()
+        #user_result = find_user(dbs, username)
         if len(user_result) == 0:
             resp.body = json.dumps({'status': 'user not found'})
             resp.status = falcon.HTTP_409

@@ -8,7 +8,7 @@ My first time using SQLAlchemy, starting with:
 import datetime
 import hashlib
 
-from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, DateTime, func
+from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, DateTime, func, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 
@@ -96,3 +96,10 @@ def hash_this(secret, salt):
         salt,
         100_000
     )
+
+
+def find_user(session, username):
+    res = session.query(User)                                                    \
+                 .filter(or_(User.username == username, User.email == username)) \
+                 .all()
+    return res

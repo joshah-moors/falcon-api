@@ -89,6 +89,12 @@ class SQLAlchemySessionManager:
             req.context['db_session'].close()
 
 
+'''
+
+    HELPER FUNCTIONS
+
+'''
+
 def hash_this(secret, salt):
     return hashlib.pbkdf2_hmac(
         'sha256',   # hash digest algorithm

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
+"""
+This module is a copy of app_auth that will implement cookies in the responses to set the JWT on the front-end
+"""
+
 import json
 import uuid
 
@@ -19,7 +23,7 @@ jwt_auth = JWTAuthBackend(user_loader, ENV.APP_SECRET, expiration_delta=ENV.EXP_
 refresh_auth = JWTAuthBackend(user_loader, ENV.APP_SECRET, expiration_delta=ENV.EXP_REFRESH_TOKEN)
 
 
-class Login:
+class Login2:
     def on_post(self, req, resp):
         if req.media is None:
             resp.body = json.dumps({'status': 'missing username/password'})
@@ -83,7 +87,7 @@ class Login:
         resp.status = falcon.HTTP_401
 
 
-class RefreshToken:
+class RefreshToken2:
     def __init__(self):
         self.claim_opts = dict(('verify_' + claim, True) for claim in refresh_auth.verify_claims)
         self.claim_opts.update(
@@ -166,7 +170,7 @@ class RefreshToken:
         resp.status = falcon.HTTP_200
 
 
-class InvalidateToken:
+class InvalidateToken2:
     def on_post(self, req, resp):
         user_id = req.context['user']['id']
         req.context['db_session'].query(app_db.RefreshToken)   \
@@ -176,7 +180,7 @@ class InvalidateToken:
         resp.status = falcon.HTTP_200
 
 
-class UserMgmt:
+class UserMgmt2:
     def on_post(self, req, resp):
         email = req.media['email']
         username = req.media['username']
@@ -192,27 +196,3 @@ class UserMgmt:
         resp.status = falcon.HTTP_200
 
 
-class CORSComponent:
-    def process_response(self, req, resp, resource, req_succeeded):
-        resp.set_header('Access-Control-Allow-Origin', '*')
-
-        if (req_succeeded
-            and req.method == 'OPTIONS'
-            and req.get_header('Access-Control-Request-Method')
-        ):
-            # NOTE(kgriffs): This is a CORS preflight request. Patch the
-            #   response accordingly.
-
-            allow = resp.get_header('Allow')
-            resp.delete_header('Allow')
-
-            allow_headers = req.get_header(
-                'Access-Control-Request-Headers',
-                default='*'
-            )
-
-            resp.set_headers((
-                ('Access-Control-Allow-Methods', allow),
-                ('Access-Control-Allow-Headers', allow_headers),
-                ('Access-Control-Max-Age', '86400'),  # 24 hours
-            ))

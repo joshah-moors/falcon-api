@@ -10,6 +10,7 @@ import falcon
 from falcon_auth import FalconAuthMiddleware
 
 import jwtapi.app_auth as app_auth
+import jwtapi.app_auth_2 as app_auth_2
 import jwtapi.app_resources as app_resources
 from jwtapi.app_db import Session, SQLAlchemySessionManager
 
@@ -35,6 +36,7 @@ def create_app():
     api.add_route('/api/v1/media/private', app_resources.PrivateInfo())
     # v2 cookie routes
     api.add_route('/api/v2/media/public', app_resources.PublicInfo())
+    #
     return api
 
 

@@ -9,6 +9,7 @@ Command to start server (from repo root dir)
 import falcon
 from falcon_auth import FalconAuthMiddleware
 
+import jwtapi.env as ENV
 import jwtapi.app_auth as app_auth
 import jwtapi.app_auth_2 as app_auth_2
 import jwtapi.app_resources as app_resources
@@ -41,6 +42,8 @@ def create_app():
     api.add_route('/api/v2/auth/invalidate', app_auth_2.InvalidateToken2())
     api.add_route('/api/v2/auth/user-mgmt', app_auth_2.UserMgmt2())
     api.add_route('/api/v2/media/public', app_resources.PublicInfo())
+    # Secure cookies (http/https)
+    api.resp_options.secure_cookies_by_default = ENV.RUNNING_IN_PROD
     #
     return api
 

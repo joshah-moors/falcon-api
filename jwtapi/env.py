@@ -11,3 +11,6 @@ EXP_ACCESS_TOKEN = 15 * 60
 
 # Refresh Token:    7 days
 EXP_REFRESH_TOKEN = 7 * 24 * 60 * 60
+
+# Flag for secure cookies
+RUNNING_IN_PROD = False

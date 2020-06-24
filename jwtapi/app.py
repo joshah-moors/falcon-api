@@ -19,6 +19,7 @@ open_routes = ['/api/v1/auth/login',
                '/api/v1/auth/refresh',
                '/api/v1/auth/user-mgmt',
                '/api/v1/media/public',
+               '/api/v2/auth/login',
                '/api/v2/media/public', ]
 
 auth_middleware = FalconAuthMiddleware(app_auth.jwt_auth, exempt_routes=open_routes)

@@ -172,6 +172,9 @@ class RefreshToken2:
 
 class InvalidateToken2:
     def on_post(self, req, resp):
+        #
+        # And unset Cookie here
+        #
         user_id = req.context['user']['id']
         req.context['db_session'].query(app_db.RefreshToken)   \
                .filter(app_db.RefreshToken.user_id == user_id) \

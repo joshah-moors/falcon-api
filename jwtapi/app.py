@@ -21,7 +21,9 @@ open_routes = ['/api/v1/auth/login',
                '/api/v1/auth/user-mgmt',
                '/api/v1/media/public',
                '/api/v2/auth/login',
-               '/api/v2/media/public', ]
+               '/api/v2/media/public',
+               #
+               '/api/v2/auth/test', ]
 
 auth_middleware = FalconAuthMiddleware(app_auth.jwt_auth, exempt_routes=open_routes)
 db_middleware = SQLAlchemySessionManager(Session)
@@ -42,6 +44,8 @@ def create_app():
     api.add_route('/api/v2/auth/invalidate', app_auth_2.InvalidateToken2())
     api.add_route('/api/v2/auth/user-mgmt', app_auth_2.UserMgmt2())
     api.add_route('/api/v2/media/public', app_resources.PublicInfo())
+    #
+    api.add_route('/api/v2/auth/test', app_auth_2.TestEndpoint2())
     # Secure cookies (http/https)
     api.resp_options.secure_cookies_by_default = ENV.RUNNING_IN_PROD
     #

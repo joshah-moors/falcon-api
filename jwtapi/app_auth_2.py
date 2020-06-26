@@ -100,6 +100,14 @@ class Login2:
         resp.status = falcon.HTTP_401
 
 
+class TestEndpoint2:
+    def on_post(self, req, resp):
+        c = req.cookies
+        print(c)
+        
+        resp.status = falcon.HTTP_200
+
+
 class RefreshToken2:
     def __init__(self):
         self.claim_opts = dict(('verify_' + claim, True) for claim in refresh_auth.verify_claims)

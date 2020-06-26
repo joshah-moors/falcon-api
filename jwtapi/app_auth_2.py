@@ -68,18 +68,31 @@ class Login2:
                 dbs.add(app_db.RefreshToken(user.username, refresh_secret, user))
                 dbs.commit()
                 # Create a refresh token
-                refresh_token = refresh_auth.get_auth_token({
-                        'username': user.username,
-                        'id': user.id,
-                        'refresh': refresh_secret
-                    })
+                #
+                #   I don't think refresh token should be JWT - don't matter if it gets exposed
+                #
+                #
+                #
+                #refresh_token = refresh_auth.get_auth_token({
+                #        'username': user.username,
+                #        'id': user.id,
+                #        'refresh': refresh_secret
+                #    })
 
                 # Assemble response
                 resp_dict = {
-                    'accessToken': jwt,
-                    'refreshToken': refresh_token,
-                    'refreshAge': ENV.EXP_REFRESH_TOKEN,
+                    #'accessToken': jwt,
+                    #'refreshToken': refresh_token,
+                    #'refreshAge': ENV.EXP_REFRESH_TOKEN,
+                    'loginStatus': 'success',
+                    'username': user.username,
                 }
+
+                # Set cookies
+                resp.set_cookie("accessToken", jwt)
+                resp.set_cookie("refreshToken", refresh_secret)
+                resp.set_cookie("refreshAge", str(ENV.EXP_REFRESH_TOKEN))
+
                 resp.body = json.dumps(resp_dict)
                 resp.status = falcon.HTTP_200
                 return

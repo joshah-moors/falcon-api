@@ -104,7 +104,11 @@ class TestEndpoint2:
     def on_post(self, req, resp):
         c = req.cookies
         print(c)
-        
+
+        print('---')
+        token = req.get_cookie_values('accessToken')  # Returns a list
+        print(token)
+
         resp.status = falcon.HTTP_200
 
 

@@ -106,6 +106,9 @@ class TestEndpoint2:
         print(c)
 
         print('---')
+        print(c['accessToken'])   # <-- I prefer this
+
+        print('---')
         token = req.get_cookie_values('accessToken')  # Returns a list
         print(token)
 

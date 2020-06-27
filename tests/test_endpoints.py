@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 import jwtapi.app
 import jwtapi.app_db
+import jwtapi.env
 
 mock_user_dict = {
     'email': 'mr.fake@gmail.com',
@@ -104,7 +105,7 @@ def test_login_success(client, monkeypatch):
     media_dict = {k: v for k, v in mock_user_dict.items() if k != 'email'}
     mock_user = jwtapi.app_db.User(
         mock_user_dict['username'],
-        jwtapi.app_db.hash_this(mock_user_dict['password'], jwtapi.app_db.SALT),
+        jwtapi.app_db.hash_this(mock_user_dict['password'], jwtapi.env.SALT),
         mock_user_dict['email'])
     monkeypatch.setattr('falcon.request.Request.media', media_dict)
     monkeypatch.setattr('sqlalchemy.orm.session.Session.query', lambda x, y: DBSessionPath([mock_user]))
@@ -166,7 +167,7 @@ def test_refresh_valid(client, monkeypatch):
                     }}
     mock_user = jwtapi.app_db.User(
         mock_user_dict['username'],
-        jwtapi.app_db.hash_this(mock_user_dict['password'], jwtapi.app_db.SALT),
+        jwtapi.app_db.hash_this(mock_user_dict['password'], jwtapi.env.SALT),
         mock_user_dict['email'])
 
     monkeypatch.setattr('falcon.request.Request.media', {'refreshToken': mock_refresh_secret})

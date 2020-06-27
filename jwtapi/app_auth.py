@@ -35,9 +35,6 @@ class Login:
         dbs = req.context['db_session']
 
         # Ensure user exists
-        #user_result = dbs.query(User)                                                    \
-        #                 .filter(or_(User.username == username, User.email == username)) \
-        #                 .all()
         user_result = find_user(dbs, username)
         if len(user_result) == 0:
             resp.body = json.dumps({'status': 'user not found'})
@@ -45,7 +42,7 @@ class Login:
             return
 
         # Hash the user-provided password
-        pw_hash = app_db.hash_this(password, app_db.SALT)
+        pw_hash = app_db.hash_this(password, ENV.SALT)
 
         # If newly generated pw hash mathes db:
         #        - Create JWT, DB log refresh token, return JWT and refresh token
@@ -182,7 +179,7 @@ class UserMgmt:
         username = req.media['username']
         password = req.media['password']
         #
-        new_user = User(username, app_db.hash_this(password, app_db.SALT), email)
+        new_user = User(username, app_db.hash_this(password, ENV.SALT), email)
         crt_status, crt_msg = new_user.create()
         if crt_status is False:
             resp.body = json.dumps({'status': crt_msg})
@@ -200,8 +197,6 @@ class CORSComponent:
             and req.method == 'OPTIONS'
             and req.get_header('Access-Control-Request-Method')
         ):
-            # NOTE(kgriffs): This is a CORS preflight request. Patch the
-            #   response accordingly.
 
             allow = resp.get_header('Allow')
             resp.delete_header('Allow')
@@ -214,5 +209,5 @@ class CORSComponent:
             resp.set_headers((
                 ('Access-Control-Allow-Methods', allow),
                 ('Access-Control-Allow-Headers', allow_headers),
-                ('Access-Control-Max-Age', '86400'),  # 24 hours
+                ('Access-Control-Max-Age', ENV.CORS_MAX_AGE),
             ))

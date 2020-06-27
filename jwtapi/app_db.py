@@ -14,7 +14,6 @@ from sqlalchemy.orm import sessionmaker, relationship, backref
 
 import jwtapi.env as ENV
 
-SALT = b'\xd6\xea\xc1A\xf3!\xce\xc7\xa6\xec\x93\xec\xcc_{,\x08\x9aWK\xb2R\xc4\x08\xa8\xa1@\xf6\x07\x7fe\xea'
 
 engine = create_engine(f'sqlite:///{ENV.DB_PATH}')
 Session = sessionmaker(bind=engine)
